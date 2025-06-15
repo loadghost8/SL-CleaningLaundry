@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SL Cleaning - Settings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .sidebar-active { background-color: #dbeafe; color: #1d4ed8; }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border-left: 4px solid;
+        }
+        .alert-success { background-color: #d1fae5; border-color: #059669; color: #065f46; }
+        .alert-error { background-color: #fee2e2; border-color: #dc2626; color: #991b1b; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Flash Messages -->
+    <div id="flashMessages" class="fixed top-4 right-4 z-50 space-y-2 sm:max-w-sm max-w-[calc(100%-2rem)]">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <div class="flex items-center justify-between">
+                            <span>{{ message }}</span>
+                            <button onclick="this.parentElement.parentElement.remove()" class="ml-2">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-white shadow-lg border-r border-gray-200 fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 -translate-x-full">
+            <div class="flex flex-col h-full justify-between">
+                <div>
+                    <div class="p-4 sm:p-6 border-b border-gray-200 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-broom text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <h1 class="font-bold text-lg sm:text-xl text-gray-800">SL Cleaning</h1>
+                                <p class="text-xs sm:text-sm text-gray-500">Admin Panel</p>
+                            </div>
+                        </div>
+                        <button class="md:hidden" onclick="toggleSidebar()">
+                            <i class="fas fa-times text-gray-600"></i>
+                        </button>
+                    </div>
+                    <nav class="p-4 space-y-2">
+                        <a href="/admin" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-chart-bar w-5 text-center mr-3"></i>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="/admin/quotes" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-file-invoice w-5 text-center mr-3"></i>
+                            <span>Quote Requests</span>
+                        </a>
+                        <a href="/admin/comments" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-comments w-5 text-center mr-3"></i>
+                            <span>Reviews</span>
+                        </a>
+                        <a href="/admin/newsletter" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-envelope w-5 text-center mr-3"></i>
+                            <span>Newsletter</span>
+                        </a>
+                        <a href="/admin/stats" class="sidebar-active flex items-center p-3 rounded-lg transition-colors">
+                            <i class="fas fa-cog w-5 text-center mr-3"></i>
+                            <span>Settings</span>
+                        </a>
+                    </nav>
+                </div>
+                <div class="p-4">
+                    <div class="bg-gray-100 rounded-lg p-3">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-800">Admin User</p>
+                                <p class="text-xs text-gray-500">Online</p>
+                            </div>
+                        </div>
+                        <a href="/admin/logout" class="flex items-center justify-center w-full p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                            <i class="fas fa-sign-out-alt mr-2"></i>
+                            <span>Logout</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Mobile Menu Button -->
+        <button class="md:hidden fixed top-4 left-4 z-50 bg-blue-600 text-white p-2 rounded-lg" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 sm:p-8 overflow-auto md:ml-0 ml-0">
+            <header class="bg-white border-b border-gray-200 px-4 sm:px-8 py-4 sm:py-6 mb-4 sm:mb-8 rounded-xl shadow-sm">
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Business Statistics</h1>
+                        <p class="text-sm sm:text-base text-gray-600">Update business statistics</p>
+                    </div>
+                </div>
+            </header>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+                <h2 class="text-base sm:text-lg font-semibold text-gray-800 mb-4">Update Statistics</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                    {% for stat in stats %}
+                    <form action="/admin/stats" method="POST" class="space-y-4">
+                        <div>
+                            <label for="{{ stat.stat_name }}" class="block text-sm font-medium text-gray-700">
+                                {{ stat.stat_name | replace('_', ' ') | title }}
+                            </label>
+                            <input type="number" id="{{ stat.stat_name }}" name="stat_value" value="{{ stat.stat_value }}" class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500 text-sm" required>
+                            <input type="hidden" name="stat_name" value="{{ stat.stat_name }}">
+                        </div>
+                        <button type="submit" class="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors w-full text-sm">
+                            <i class="fas fa-save mr-2"></i>Update
+                        </button>
+                    </form>
+                    {% endfor %}
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+            return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+            if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+                try {
+                    var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                    var firstSheetName = workbook.SheetNames[0];
+                    var worksheet = workbook.Sheets[firstSheetName];
+
+                    // Convert sheet to JSON to filter blank rows
+                    var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                    // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                    var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                    // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                    var headerRowIndex = filteredData.findIndex((row, index) =>
+                        row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                    );
+                    // Fallback
+                    if (headerRowIndex === -1 || headerRowIndex > 25) {
+                        headerRowIndex = 0;
+                    }
+
+                    // Convert filtered JSON back to CSV
+                    var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                    csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                    return csv;
+                } catch (e) {
+                    console.error(e);
+                    return "";
+                }
+            }
+            return gk_fileData[filename] || "";
+        }
+
+        // Utility functions
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `alert alert-${type} max-w-sm`;
+            messageDiv.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span>${escapeHtml(message)}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-2">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            document.getElementById('flashMessages').appendChild(messageDiv);
+            setTimeout(() => {
+                if (messageDiv.parentElement) {
+                    messageDiv.remove();
+                }
+            }, 5000);
+        }
+
+        // Toggle sidebar for mobile
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('-translate-x-full');
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            // Add any initialization code if needed
+        });
+    </script>
+</body>
+</html>

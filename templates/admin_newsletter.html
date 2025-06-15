@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SL Cleaning - Newsletter Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .sidebar-active { background-color: #dbeafe; color: #1d4ed8; }
+        .card-hover { transition: transform 0.2s; }
+        .card-hover:hover { transform: translateY(-2px); }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border-left: 4px solid;
+        }
+        .alert-success { background-color: #d1fae5; border-color: #059669; color: #065f46; }
+        .alert-error { background-color: #fee2e2; border-color: #dc2626; color: #991b1b; }
+        .alert-info { background-color: #dbeafe; border-color: #2563eb; color: #1e40af; }
+        @media (max-width: 640px) {
+            .stats-table {
+                display: block;
+            }
+            .stats-table thead {
+                display: none;
+            }
+            .stats-table tbody, .stats-table tr {
+                display: block;
+            }
+            .stats-table tr {
+                margin-bottom: 1rem;
+                border-bottom: 1px solid #e5e7eb;
+                padding-bottom: 1rem;
+            }
+            .stats-table td {
+                display: flex;
+                justify-content: space-between;
+                padding: 0.5rem 1rem;
+            }
+            .stats-table td:before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: #374151;
+                width: 40%;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Flash Messages -->
+    <div id="flashMessages" class="fixed top-4 right-4 z-50 space-y-2 sm:max-w-sm max-w-[calc(100%-2rem)]">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <div class="flex items-center justify-between">
+                            <span>{{ message }}</span>
+                            <button onclick="this.parentElement.parentElement.remove()" class="ml-2">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-white shadow-lg border-r border-gray-200 fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 -translate-x-full">
+            <div class="flex flex-col h-full justify-between">
+                <div>
+                    <div class="p-4 sm:p-6 border-b border-gray-200 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-broom text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <h1 class="font-bold text-lg sm:text-xl text-gray-800">SL Cleaning</h1>
+                                <p class="text-xs sm:text-sm text-gray-500">Admin Panel</p>
+                            </div>
+                        </div>
+                        <button class="md:hidden" onclick="toggleSidebar()">
+                            <i class="fas fa-times text-gray-600"></i>
+                        </button>
+                    </div>
+
+                    <nav class="p-4 space-y-2">
+                        <a href="/admin" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-chart-bar w-5 text-center mr-3"></i>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="/admin/quotes" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-file-invoice w-5 text-center mr-3"></i>
+                            <span>Quote Requests</span>
+                        </a>
+                        <a href="/admin/comments" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-comments w-5 text-center mr-3"></i>
+                            <span>Reviews</span>
+                        </a>
+                        <a href="/admin/newsletter" class="sidebar-active flex items-center p-3 rounded-lg transition-colors">
+                            <i class="fas fa-envelope w-5 text-center mr-3"></i>
+                            <span>Newsletter</span>
+                        </a>
+                        <a href="/admin/stats" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-cog w-5 text-center mr-3"></i>
+                            <span>Settings</span>
+                        </a>
+                    </nav>
+                </div>
+
+                <div class="p-4">
+                    <div class="bg-gray-100 rounded-lg p-3">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-800">Admin User</p>
+                                <p class="text-xs text-gray-500">Online</p>
+                            </div>
+                        </div>
+                        <a href="/admin/logout" class="flex items-center justify-center w-full p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                            <i class="fas fa-sign-out-alt mr-2"></i>
+                            <span>Logout</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Mobile Menu Button -->
+        <button class="md:hidden fixed top-4 left-4 z-50 bg-blue-600 text-white p-2 rounded-lg" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-auto md:ml-0 ml-0">
+            <header class="bg-white border-b border-gray-200 px-4 sm:px-8 py-4 sm:py-6">
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Newsletter Subscribers</h1>
+                        <p class="text-sm sm:text-base text-gray-600">Manage newsletter subscriptions</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button onclick="sendNewsletter()" class="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-envelope mr-2"></i>Send Newsletter
+                        </button>
+                        <button onclick="exportNewsletter()" class="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                            <i class="fas fa-download mr-2"></i>Export Subscribers
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="p-4 sm:p-8">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                    <div class="overflow-x-auto">
+                        <table class="w-full stats-table">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Email</th>
+                                    <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Subscribed Date</th>
+                                    <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Status</th>
+                                    <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                {% for subscriber in subscribers %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 sm:px-6 py-4 text-sm text-gray-900" data-label="Email">{{ subscriber.email }}</td>
+                                    <td class="px-4 sm:px-6 py-4 text-sm text-gray-500" data-label="Subscribed Date">
+                                        {{ subscriber.subscribed_at.split()[0] if subscriber.subscribed_at else 'N/A' }}
+                                    </td>
+                                    <td class="px-4 sm:px-6 py-4 text-sm text-gray-500" data-label="Status">
+                                        {{ 'Active' if subscriber.active else 'Inactive' }}
+                                    </td>
+                                    <td class="px-4 sm:px-6 py-4" data-label="Actions">
+                                        <button onclick="unsubscribe('{{ subscriber.email }}')" class="text-red-600 hover:text-red-700">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('-translate-x-full');
+        }
+
+        async function exportNewsletter() {
+            try {
+                const response = await fetch('/api/export/newsletter', {
+                    method: 'GET'
+                });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `newsletter_subscribers_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    showMessage('Subscribers exported successfully!', 'success');
+                } else {
+                    throw new Error('Failed to export subscribers');
+                }
+            } catch (error) {
+                console.error('Error exporting subscribers:', error);
+                showMessage('Failed to export subscribers', 'error');
+            }
+        }
+
+        async function unsubscribe(email) {
+            if (confirm(`Are you sure you want to unsubscribe ${email}?`)) {
+                try {
+                    const response = await fetch('/api/newsletter/unsubscribe', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email })
+                    });
+                    if (response.ok) {
+                        showMessage('Subscriber unsubscribed successfully!', 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        throw new Error('Failed to unsubscribe');
+                    }
+                } catch (error) {
+                    console.error('Error unsubscribing:', error);
+                    showMessage('Failed to unsubscribe', 'error');
+                }
+            }
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `alert alert-${type} max-w-sm`;
+            messageDiv.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span>${message}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-2">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            document.getElementById('flashMessages').appendChild(messageDiv);
+            setTimeout(() => {
+                if (messageDiv.parentElement) {
+                    messageDiv.remove();
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

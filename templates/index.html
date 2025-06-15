@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SL Cleaning & Laundry Services - Professional Cleaning in Reading, UK</title>
+  <meta name="description" content="Professional residential & commercial cleaning services in Reading, UK. Free quotes, 7 days a week. Expert cleaning with constant communication until job completion.">
+  <meta name="keywords" content="cleaning services, Reading UK, residential cleaning, commercial cleaning, laundry services, professional cleaners">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#home" class="logo"><img src="{{ url_for('static', filename='images/banner-logo.jpg') }}" alt="SL Cleaning & Laundry Logo" style="height: 50px;"> SL Cleaning & Laundry</a>
+            <ul class="nav-links">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#services">Services</a></li>
+                <li><a href="#gallery">Gallery</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+            <a href="#contact" class="cta-nav">Free Quote</a>
+            <div class="mobile-menu" id="mobileMenu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <h1>Professional Cleaning & Laundry Services</h1>
+            <p>Experts in residential & commercial cleaning. Creating a spotless environment for our clients across Reading and surrounding areas.</p>
+            <div class="hero-buttons">
+                <a href="#contact" class="btn-primary">Get Free Quote</a>
+                <a href="#services" class="btn-secondary">Our Services</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Overview -->
+    <section class="section overview">
+        <div class="container">
+            <div class="overview-content">
+                <p>We're your trusted local cleaning experts in Reading, providing comprehensive residential and commercial cleaning services with constant communication until job completion.</p>
+            </div>
+            <div class="services-icons">
+                <div class="service-icon">
+                    <div class="service-icon-emoji">🏡</div>
+                    <h3>Residential Cleaning</h3>
+                    <ul>
+                        <li>Expert home cleaning solutions</li>
+                        <li>Weekly/fortnightly clean</li>
+                        <li>Deep/spring cleans</li>
+                        <li>End-of-tenancy cleans</li>
+                    </ul>
+                </div>
+                <div class="service-icon">
+                    <div class="service-icon-emoji">🏢</div>
+                    <h3>Commercial Cleaning</h3>
+                    <ul>
+                        <li>Professional business environments</li>
+                        <li>Office cleaning</li>
+                        <li>Retail & hospitality cleaning</li>
+                    </ul>
+                </div>
+                <div class="service-icon">
+                    <div class="service-icon-emoji">👕</div>
+                    <h3>Laundry Services</h3>
+                    <ul>
+                        <li>Complete laundry solutions</li>
+                        <li>Wash-dry-fold service</li>
+                        <li>Ironing (pickup/delivery or walk-in)</li>
+                        <li>Linen cleaning for rentals</li>
+                    </ul>
+                </div>
+                <div class="service-icon">
+                    <div class="service-icon-emoji">✨</div>
+                    <h3>Add-on Services</h3>
+                    <ul>
+                        <li>Eco-cleaning packages (using biodegradable products)</li>
+                        <li>Express/same-day laundry</li>
+                        <li>Subscription packages (e.g., weekly wash & clean)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why Choose Us -->
+    <section class="section why-choose">
+        <div class="container">
+            <h2 class="section-title">Why Choose SL Cleaning & Laundry?</h2>
+            <div class="features-grid">
+                <div class="feature">
+                    <div class="feature-icon">📞</div>
+                    <div>
+                        <h3>Constant Communication</h3>
+                        <p>We maintain continuous communication with our clients until job completion for your peace of mind.</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">💰</div>
+                    <div>
+                        <h3>Free Quotes</h3>
+                        <p>Get accurate, transparent pricing with our complimentary quote service - no hidden fees.</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🌟</div>
+                    <div>
+                        <h3>Expert Service</h3>
+                        <p>Professional cleaning experts delivering exceptional results for both residential and commercial spaces.</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">📅</div>
+                    <div>
+                        <h3>7 Days a Week</h3>
+                        <p>Available Monday through Sunday, 09:00-17:00, to fit your schedule.</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">📍</div>
+                    <div>
+                        <h3>Local to Reading</h3>
+                        <p>Based in Reading, we understand the local community and provide personalized service.</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🎯</div>
+                    <div>
+                        <h3>Spotless Results</h3>
+                        <p>Our commitment to creating spotless environments ensures your complete satisfaction.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Us -->
+    <section id="about" class="section">
+        <div class="container">
+            <h2 class="section-title">About SL Cleaning & Laundry Services</h2>
+            <div style="max-width: 800px; margin: 0 auto; text-align: center;">
+                <p style="font-size: 1.1rem; color: #4b5563; margin-bottom: 2rem;">
+                    Based in the heart of Reading at 29 South Street, SL Cleaning & Laundry Services has established itself as a trusted name in professional cleaning. We specialize in both residential and commercial cleaning, ensuring every space we touch becomes spotless.
+                </p>
+                <p style="font-size: 1.1rem; color: #4b5563; margin-bottom: 2rem;">
+                    Our commitment goes beyond just cleaning - we believe in constant communication with our clients throughout the entire process until job completion. This approach has earned us a reputation for reliability and exceptional customer service in the Reading area.
+                </p>
+                <div style="background: linear-gradient(135deg, #f8fafc, #e2e8f0); padding: 2rem; border-radius: 20px; margin-top: 3rem;">
+                    <h3 style="color: #1f2937; margin-bottom: 1rem;">New Services Coming Soon!</h3>
+                    <p style="color: #4b5563;">We're constantly expanding our services to better serve our community. Stay tuned for exciting new offerings!</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services -->
+    <section id="services" class="section services">
+        <div class="container">
+            <h2 class="section-title">Our Services</h2>
+            <div class="services-grid">
+                <div class="service-card">
+                    <h3>🏠 Residential Cleaning</h3>
+                    <p>Comprehensive home cleaning services tailored to your needs. From regular maintenance to deep cleaning, we keep your home spotless.</p>
+                    <div class="service-price">Free Quote Available</div>
+                    <a href="#contact" class="btn-primary">Get Quote</a>
+                </div>
+                <div class="service-card">
+                    <h3>🏢 Commercial Cleaning</h3>
+                    <p>Professional cleaning for business environments. We understand the importance of maintaining a clean, professional workspace for your clients and employees.</p>
+                    <div class="service-price">Custom Pricing</div>
+                    <a href="#contact" class="btn-primary">Contact Us</a>
+                </div>
+                <div class="service-card">
+                    <h3>👕 Laundry Services</h3>
+                    <p>Complete laundry solutions for busy individuals and families. Professional washing, drying, and folding services.</p>
+                    <div class="service-price">Competitive Rates</div>
+                    <a href="#contact" class="btn-primary">Learn More</a>
+                </div>
+                <div class="service-card">
+                    <h3>🧹 Deep Cleaning</h3>
+                    <p>Intensive deep cleaning services for those special occasions or when you need that extra level of cleanliness.</p>
+                    <div class="service-price">Free Estimate</div>
+                    <a href="#contact" class="btn-primary">Book Now</a>
+                </div>
+                <div class="service-card">
+                    <h3>🔄 Regular Maintenance</h3>
+                    <p>Scheduled cleaning services to keep your space consistently clean. Flexible scheduling to fit your routine.</p>
+                    <div class="service-price">Package Deals</div>
+                    <a href="#contact" class="btn-primary">Schedule</a>
+                </div>
+                <div class="service-card">
+                    <h3>✨ Specialized Cleaning</h3>
+                    <p>Specialized cleaning services for unique requirements. We adapt our services to meet your specific needs.</p>
+                    <div class="service-price">Custom Quote</div>
+                    <a href="#contact" class="btn-primary">Discuss</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Live Business Stats -->
+    <section class="section stats-showcase">
+        <div class="container">
+            <h2 class="section-title">Our Growing Success</h2>
+            <p style="text-align: center; font-size: 1.1rem; color: #6b7280; margin-bottom: 3rem;">
+                Real numbers from our thriving cleaning business in Reading
+            </p>
+            
+            <div class="stats-dashboard" id="statsGrid">
+                <!-- Stats will be loaded dynamically -->
+                <div class="stat-item">
+                    <div class="stat-icon">💼</div>
+                    <div class="stat-value" data-target="120">0</div>
+                    <div class="stat-label">Jobs Completed</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">⭐</div>
+                    <div class="stat-value" data-target="98">0</div>
+                    <div class="stat-suffix">%</div>
+                    <div class="stat-label">Customer Satisfaction</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">📅</div>
+                    <div class="stat-value" data-target="23">0</div>
+                    <div class="stat-label">This Month's Bookings</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">📍</div>
+                    <div class="stat-value" data-target="4">0</div>
+                    <div class="stat-label">Areas Served</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">🏆</div>
+                    <div class="stat-value" data-target="5">0</div>
+                    <div class="stat-label">Years Experience</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">📧</div>
+                    <div class="stat-value" data-target="45">0</div>
+                    <div class="stat-label">Newsletter Subscribers</div>
+                </div>
+            </div>
+            
+            <div class="areas-served" style="margin-top: 2rem; text-align: center;">
+                <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 1rem;">We proudly serve:</p>
+                <div class="area-tags" id="areaTags">
+                    <span class="area-tag">Reading</span>
+                    <span class="area-tag">Oxford</span>
+                    <span class="area-tag">Bracknell</span>
+                    <span class="area-tag">Newbury</span>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 2rem; font-size: 0.9rem; color: #6b7280;">
+                <span id="lastUpdated">Stats updated in real-time</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Visualization -->
+    <section class="section stats-visual">
+        <div class="container">
+            <h2 class="section-title">Live Business Statistics</h2>
+            <canvas id="statsChart" height="100"></canvas>
+            <p id="lastUpdated" style="text-align:center; margin-top:1rem; font-size:0.9rem; color:#6b7280;">Loading stats...</p>
+        </div>
+    </section>
+
+    <!-- Gallery -->
+    <section id="gallery" class="section gallery">
+        <div class="container">
+            <h2 class="section-title">Spotless Spaces: Our Cleaning Journey in Pictures</h2>
+            <div class="gallery-grid">
+                <div class="gallery-item">
+                    <h2>Before & After: Living Room</h2>
+                    <img src="https://bing.com/th/id/BCO.3e83c9f7-b69d-4ddb-9c50-5dfa40fddc06.png" alt="Living Room Cleaning">
+                </div>  
+                <div class="gallery-item">
+                    <h2>Before & After: Living Room</h2>
+                    <img src="https://bing.com/th/id/BCO.8f099ca5-bc11-4cf1-bec9-3eaefe120412.png" alt="Living Room Cleaning">
+                </div> 
+                <div class="gallery-item">
+                    <h2>Before & After: Living Room</h2>
+                    <img src="https://bing.com/th/id/BCO.d3f4676c-36c7-445c-95bd-f5f30b3c5a13.png" alt="Living Room Cleaning">
+                </div> 
+                <div class="gallery-item">
+                    <h2>Before & After: Living Room</h2>
+                    <img src="https://bing.com/th/id/BCO.b6aeb140-b1d7-4024-a4ed-423b718c18da.png" alt="Living Room Cleaning">
+                </div>                         
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="section testimonials">
+        <div class="container">
+            <h2 class="section-title">Client Reviews</h2>
+            <div class="testimonials-grid" id="commentsContainer">
+                <p>Loading comments...</p>
+            </div>
+            <div style="margin-top: 2rem; padding: 2rem; background: rgba(255, 255, 255, 0.1); border-radius: 15px;">
+                <h3 style="color: #10b981; margin-bottom: 1rem;">Share Your Experience</h3>
+                <form id="commentForm">
+                    <div class="form-group">
+                        <label for="comment-name">Your Name *</label>
+                        <input type="text" id="comment-name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="comment-email">Email Address *</label>
+                        <input type="email" id="comment-email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="comment-rating">Rating *</label>
+                        <select id="comment-rating" name="rating" required>
+                            <option value="">Select a rating</option>
+                            <option value="1">1 Star</option>
+                            <option value="2">2 Stars</option>
+                            <option value="3">3 Stars</option>
+                            <option value="4">4 Stars</option>
+                            <option value="5">5 Stars</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="comment-text">Your Review *</label>
+                        <textarea id="comment-text" name="comment" rows="4" placeholder="Tell us about your experience with SL Cleaning & Laundry..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary" style="width: 100%; margin-top: 1rem;">
+                        Submit Review
+                    </button>
+                </form>
+                <p style="margin-top: 1rem; font-size: 0.9rem; color: #6b7280; text-align: center;">
+                    Your review will be published after approval.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Newsletter -->
+    <section class="section newsletter">
+        <div class="container">
+            <h2 class="section-title">Stay Updated & Save 10%</h2>
+            <p style="font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.9;">Subscribe to our newsletter and get 10% off your first service!</p>
+            <form class="newsletter-form" id="newsletterForm">
+                <input type="email" class="newsletter-input" placeholder="Enter your email address" required>
+                <button type="submit" class="newsletter-btn">Subscribe & Save</button>
+            </form>
+            <p style="margin-top: 1rem; opacity: 0.8; font-size: 0.9rem;">Get cleaning tips, special offers, and service updates delivered to your inbox.</p>
+        </div>
+    </section>
+
+    <!-- Contact -->
+    <section id="contact" class="section contact">
+        <div class="container">
+            <h2 class="section-title">Get Your Free Quote Today</h2>
+            <div class="contact-grid">
+                <div class="contact-form">
+                    <h3 style="margin-bottom: 1.5rem; color: #1f2937;">Request a Free Quote</h3>
+                    <form id="contactForm">
+                        <div class="form-group">
+                            <label for="name">Full Name *</label>
+                            <input type="text" id="name" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email Address *</label>
+                            <input type="email" id="email" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Phone Number *</label>
+                            <input type="tel" id="phone" name="phone" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="address">Property Address</label>
+                            <input type="text" id="address" name="address" placeholder="Full address for accurate quote">
+                        </div>
+                        <div class="form-group">
+                            <label for="service">Service Required *</label>
+                            <select id="service" name="service" required>
+                                <option value="">Select a service</option>
+                                <option value="residential">Residential Cleaning</option>
+                                <option value="commercial">Commercial Cleaning</option>
+                                <option value="laundry">Laundry Services</option>
+                                <option value="deep-cleaning">Deep Cleaning</option>
+                                <option value="maintenance">Regular Maintenance</option>
+                                <option value="specialized">Specialized Cleaning</option>
+                                <option value="other">Other (please specify)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="details">Additional Details</label>
+                            <textarea id="details" name="details" rows="4" placeholder="Please describe your cleaning requirements, frequency, any special requests, or specific areas of focus..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="attachment">Attach Photos (Optional)</label>
+                            <div class="file-upload">
+                                <input type="file" id="attachment" name="attachment" accept="image/*,.pdf,.doc,.docx" multiple>
+                                <label for="attachment" class="file-upload-label">
+                                    📷 Click to upload photos of the space (helps us provide accurate quotes)
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%; margin-top: 1rem;">
+                            Get My Free Quote
+                        </button>
+                    </form>
+                    <p style="margin-top: 1rem; font-size: 0.9rem; color: #6b7280; text-align: center;">
+                        We respond to all inquiries within 2 hours during business hours.
+                    </p>
+                </div>
+                
+                <div class="contact-info">
+                    <h3 style="margin-bottom: 2rem; color: #1f2937;">Contact Information</h3>
+                    
+                    <div class="contact-item">
+                        <div class="contact-item-icon">📞</div>
+                        <div>
+                            <h4>Phone</h4>
+                            <p><a href="tel:+447479691603" style="color: #2563eb; text-decoration: none;">+44 7479 691603</a></p>
+                            <p style="font-size: 0.9rem; color: #6b7280;">Available 7 days a week</p>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-item">
+                        <div class="contact-item-icon">📍</div>
+                        <div>
+                            <h4>Address</h4>
+                            <p>29 South Street<br>Reading RG1 4QU<br>United Kingdom</p>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-item">
+                        <div class="contact-item-icon">🌐</div>
+                        <div>
+                            <h4>Website</h4>
+                            <p><a href="https://slcleaninglaundry.co.uk" style="color: #2563eb; text-decoration: none;">slcleaninglaundry.co.uk</a></p>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-item">
+                        <div class="contact-item-icon">💬</div>
+                        <div>
+                            <h4>Response Time</h4>
+                            <p>We respond to all inquiries within 2 hours during business hours</p>
+                        </div>
+                    </div>
+                    
+                    <div class="business-hours">
+                        <h4 style="margin-bottom: 1rem; color: #1f2937;">Business Hours</h4>
+                        <div style="display: grid; gap: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Monday - Sunday</span>
+                                <span style="font-weight: 600;">09:00 To 17:00</span>
+                            </div>
+                            <p style="margin-top: 1rem; font-size: 0.9rem; color: #6b7280;">
+                                Available 7 days a week for your convenience. Emergency cleaning services may be available outside regular hours.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="map-container">
+                        <iframe 
+                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2486.711054093093!2d-0.974041684229394!3d51.45205987962765!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x48769b2c7b7b7b7b%3A0x7b7b7b7b7b7b7b7b!2s29%20South%20St%2C%20Reading%20RG1%204QU%2C%20UK!5e0!3m2!1sen!2suk!4v1634567890123!5m2!1sen!2suk" 
+                            width="100%" 
+                            height="300" 
+                            style="border:0; border-radius: 15px;" 
+                            allowfullscreen="" 
+                            loading="lazy">
+                        </iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div style="margin-bottom: 2rem;">
+                <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">
+                    🧽 SL Cleaning & Laundry Services
+                </div>
+                <p style="max-width: 600px; margin: 0 auto; opacity: 0.8;">
+                    Your trusted local cleaning experts in Reading. Creating spotless environments with professional service and constant communication.
+                </p>
+            </div>
+            
+            <div class="social-links">
+                <a href="#" class="social-link" title="Facebook">📘</a>
+                <a href="#" class="social-link" title="Instagram">📷</a>
+                <a href="#" class="social-link" title="Twitter">🐦</a>
+                <a href="tel:+447479691603" class="social-link" title="Call Us">📞</a>
+            </div>
+            
+            <div style="display: flex; justify-content: center; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap;">
+                <a href="#home" style="color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.3s ease;">Home</a>
+                <a href="#about" style="color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.3s ease;">About</a>
+                <a href="#services" style="color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.3s ease;">Services</a>
+                <a href="#contact" style="color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.3s ease;">Contact</a>
+                <a href="#" style="color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.3s ease;">Privacy Policy</a>
+            </div>
+            
+            <div style="background: rgba(255, 255, 255, 0.1); padding: 2rem; border-radius: 15px; margin-bottom: 2rem;">
+                <h4 style="color: #10b981; margin-bottom: 1rem;">New Services Coming Soon!</h4>
+                <p style="opacity: 0.9;">We're constantly expanding our offerings to better serve the Reading community. Stay tuned for exciting updates!</p>
+            </div>
+            
+            <div style="padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); opacity: 0.7;">
+                <p>© 2025 SL Cleaning & Laundry Services. All rights reserved.</p>
+                <p style="margin-top: 0.5rem; font-size: 0.9rem;">Professional cleaning services in Reading, UK | Licensed & Insured</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Floating Action Button -->
+    <a href="tel:+447479691603" class="fab" title="Call Now">📞</a>
+
+    <!-- Load your JavaScript -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

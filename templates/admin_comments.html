@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SL Cleaning - Reviews Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .sidebar-active { background-color: #dbeafe; color: #1d4ed8; }
+        .card-hover { transition: transform 0.2s; }
+        .card-hover:hover { transform: translateY(-2px); }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-pending { background-color: #fef3c7; color: #92400e; }
+        .status-approved { background-color: #d1fae5; color: #065f46; }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border-left: 4px solid;
+        }
+        .alert-success { background-color: #d1fae5; border-color: #059669; color: #065f46; }
+        .alert-error { background-color: #fee2e2; border-color: #dc2626; color: #991b1b; }
+        .alert-info { background-color: #dbeafe; border-color: #2563eb; color: #1e40af; }
+        .stats-table {
+            display: table;
+        }
+        @media (max-width: 640px) {
+            .stats-table {
+                display: block;
+            }
+            .stats-table thead {
+                display: none;
+            }
+            .stats-table tbody, .stats-table tr {
+                display: block;
+            }
+            .stats-table tr {
+                margin-bottom: 1rem;
+                border-bottom: 1px solid #e5e7eb;
+                padding-bottom: 1rem;
+            }
+            .stats-table td {
+                display: flex;
+                justify-content: space-between;
+                padding: 0.5rem 1rem;
+            }
+            .stats-table td:before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: #374151;
+                width: 40%;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Flash Messages -->
+    <div id="flashMessages" class="fixed top-4 right-4 z-50 space-y-2 sm:max-w-sm max-w-[calc(100%-2rem)]">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <div class="flex items-center justify-between">
+                            <span>{{ message }}</span>
+                            <button onclick="this.parentElement.parentElement.remove()" class="ml-2">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-white shadow-lg border-r border-gray-200 fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 -translate-x-full">
+            <div class="flex flex-col h-full justify-between">
+                <div>
+                    <div class="p-4 sm:p-6 border-b border-gray-200 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-broom text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <h1 class="font-bold text-lg sm:text-xl text-gray-800">SL Cleaning</h1>
+                                <p class="text-xs sm:text-sm text-gray-500">Admin Panel</p>
+                            </div>
+                        </div>
+                        <button class="md:hidden" onclick="toggleSidebar()">
+                            <i class="fas fa-times text-gray-600"></i>
+                        </button>
+                    </div>
+
+                    <nav class="p-4 space-y-2">
+                        <a href="/admin" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-chart-bar w-5 text-center mr-3"></i>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="/admin/quotes" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-file-invoice w-5 text-center mr-3"></i>
+                            <span>Quote Requests</span>
+                        </a>
+                        <a href="/admin/comments" class="sidebar-active flex items-center p-3 rounded-lg transition-colors">
+                            <i class="fas fa-comments w-5 text-center mr-3"></i>
+                            <span>Reviews</span>
+                        </a>
+                        <a href="/admin/newsletter" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-envelope w-5 text-center mr-3"></i>
+                            <span>Newsletter</span>
+                        </a>
+                        <a href="/admin/stats" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-cog w-5 text-center mr-3"></i>
+                            <span>Settings</span>
+                        </a>
+                    </nav>
+                </div>
+
+                <div class="p-4">
+                    <div class="bg-gray-100 rounded-lg p-3">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-800">Admin User</p>
+                                <p class="text-xs text-gray-500">Online</p>
+                            </div>
+                        </div>
+                        <a href="/admin/logout" class="flex items-center justify-center w-full p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                            <i class="fas fa-sign-out-alt mr-2"></i>
+                            <span>Logout</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Mobile Menu Button -->
+        <button class="md:hidden fixed top-4 left-4 z-50 bg-blue-600 text-white p-2 rounded-lg" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-auto md:ml-0 ml-0">
+            <header class="bg-white border-b border-gray-200 px-4 sm:px-8 py-4 sm:py-6">
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Reviews Management</h1>
+                        <p class="text-sm sm:text-base text-gray-600">Manage customer reviews and ratings</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <input type="text" id="commentSearch" class="border border-gray-300 rounded-lg px-3 py-1 text-sm w-full sm:w-64" placeholder="Search reviews..." oninput="searchComments()">
+                        <button onclick="exportComments()" class="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                            <i class="fas fa-download mr-2"></i>Export Reviews
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="p-4 sm:p-8">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                    <div class="p-4 sm:p-6 border-b border-gray-200">
+                        <h2 class="text-base sm:text-lg font-semibold text-gray-800">All Reviews</h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full stats-table">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Customer</th>
+                                    <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Rating</th>
+                                    <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Comment</th>
+                                    <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Status</th>
+                                    <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Date</th>
+                                    <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200" id="commentsTable">
+                                {% for comment in comments %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 sm:px-6 py-4" data-label="Customer">
+                                        <div>
+                                            <div class="font-medium text-gray-900">{{ comment.name }}</div>
+                                            <div class="text-sm text-gray-500">{{ comment.email }}</div>
+                                        </td>
+                                    <td class="px-4 sm:px-6 py-4 text-sm text-gray-900" data-label="Rating">
+                                        {% for i in range(comment.rating) %}⭐{% endfor %}
+                                    </td>
+                                    <td class="px-4 sm:px-6 py-4 text-sm text-gray-600" data-label="Comment">{{ comment.comment|truncate(100, True) }}</td>
+                                    <td class="px-4 sm:px-6 py-4 text-sm" data-label="Status">
+                                        <span class="status-badge {{ 'status-approved' if comment.approved else 'status-pending' }}">{{ 'Approved' if comment.approved else 'Pending' }}</span>
+                                    </td>
+                                    <td class="px-4 sm:px-6 py-4 text-sm text-gray-500" data-label="Date">{{ comment.created_at.split()[0] if comment.created_at else 'N/A' }}</td>
+                                    <td class="px-4 sm:px-6 py-4" data-label="Actions">
+                                        <div class="flex space-x-2">
+                                            {% if not comment.approved %}
+                                            <button onclick="approveComment({{ comment.id }})" class="text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">
+                                                Approve
+                                            </button>
+                                            {% endif %}
+                                            <button onclick="deleteComment({{ comment.id }})" class="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('-translate-x-full');
+        }
+
+        async function approveComment(id) {
+            try {
+                const response = await fetch(`/api/comments/${id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    showMessage('Comment approved successfully!', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    throw new Error('Failed to approve comment');
+                }
+            } catch (error) {
+                console.error('Error approving comment:', error);
+                showMessage('Failed to approve comment', 'error');
+            }
+        }
+
+        async function deleteComment(id) {
+            if (confirm('Are you sure you want to delete this comment?')) {
+                try {
+                    const response = await fetch(`/api/comments/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    if (response.ok) {
+                        showMessage('Comment deleted successfully!', 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        throw new Error('Failed to delete comment');
+                    }
+                } catch (error) {
+                    console.error('Error deleting comment:', error);
+                    showMessage('Failed to delete comment', 'error');
+                }
+            }
+        }
+
+        async function exportComments() {
+            try {
+                const response = await fetch('/api/comments/export');
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `sl_cleaning_comments_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    showMessage('Comments exported successfully!', 'success');
+                } else {
+                    throw new Error('Failed to export comments');
+                }
+            } catch (error) {
+                console.error('Error exporting comments:', error);
+                showMessage('Failed to export comments', 'error');
+            }
+        }
+
+        async function searchComments() {
+            const searchTerm = document.getElementById('commentSearch').value.toLowerCase();
+            try {
+                const response = await fetch('/api/comments');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch comments');
+                }
+                
+                const comments = await response.json();
+                
+                const filteredComments = comments.filter(comment => 
+                    comment.name.toLowerCase().includes(searchTerm) ||
+                    comment.email.toLowerCase().includes(searchTerm) ||
+                    comment.comment.toLowerCase().includes(searchTerm)
+                );
+
+                const tbody = document.getElementById('commentsTable');
+                tbody.innerHTML = filteredComments.map(comment => `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 sm:px-6 py-4" data-label="Customer">
+                            <div>
+                                <div class="font-medium text-gray-900">${escapeHtml(comment.name)}</div>
+                                <div class="text-sm text-gray-500">${escapeHtml(comment.email)}</div>
+                            </td>
+                            <td class="px-4 sm:px-6 py-4 text-sm text-gray-900" data-label="Rating">
+                                ${'⭐'.repeat(comment.rating)}
+                            </td>
+                            <td class="px-4 sm:px-6 py-4 text-sm text-gray-600" data-label="Comment">${escapeHtml(comment.comment.substring(0, 100))}${comment.comment.length > 100 ? '...' : ''}</td>
+                            <td class="px-4 sm:px-6 py-4 text-sm" data-label="Status">
+                                <span class="status-badge ${comment.approved ? 'status-approved' : 'status-pending'}">${comment.approved ? 'Approved' : 'Pending'}</span>
+                            </td>
+                            <td class="px-4 sm:px-6 py-4 text-sm text-gray-500" data-label="Date">${comment.date ? comment.date.split(' ')[0] : 'N/A'}</td>
+                            <td class="px-4 sm:px-6 py-4" data-label="Actions">
+                                <div class="flex space-x-2">
+                                    ${!comment.approved ? `<button onclick="approveComment(${comment.id})" class="text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">Approve</button>` : ''}
+                                    <button onclick="deleteComment(${comment.id})" class="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error searching comments:', error);
+                showMessage('Failed to search comments', 'error');
+            }
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `alert alert-${type} max-w-sm`;
+            messageDiv.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span>${escapeHtml(message)}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-2">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            document.getElementById('flashMessages').appendChild(messageDiv);
+            setTimeout(() => {
+                if (messageDiv.parentElement) {
+                    messageDiv.remove();
+                }
+            }, 5000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.addEventListener('click', function (e) {
+            if (e.target.id === 'commentModal') {
+                closeModal('commentModal');
+            }
+        });
+
+        function closeModal(modalId) {
+            document.getElementById(modalId)?.classList.add('hidden');
+            document.getElementById(modalId)?.classList.remove('flex');
+        }
+
+
+
+
+         async function approveComment(id) {
+        try {
+            const response = await fetch(`/api/comments/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (response.ok) {
+                showMessage('Comment approved successfully!', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                throw new Error('Failed to approve comment');
+            }
+        } catch (error) {
+            console.error('Error approving comment:', error);
+            showMessage('Failed to approve comment', 'error');
+        }
+    }
+
+    async function deleteComment(id) {
+        if (confirm('Are you sure you want to delete this comment?')) {
+            try {
+                const response = await fetch(`/api/comments/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    showMessage('Comment deleted successfully!', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    throw new Error('Failed to delete comment');
+                }
+            } catch (error) {
+                console.error('Error deleting comment:', error);
+                showMessage('Failed to delete comment', 'error');
+            }
+        }
+    }
+
+    async function exportData() {
+        try {
+            const response = await fetch('/api/export');
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `sl_cleaning_export_${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showMessage('Data exported successfully!', 'success');
+            } else {
+                throw new Error('Failed to export data');
+            }
+        } catch (error) {
+            console.error('Error exporting data:', error);
+            showMessage('Failed to export data', 'error');
+        }
+    }
+
+    </script>
+</body>
+</html>
+

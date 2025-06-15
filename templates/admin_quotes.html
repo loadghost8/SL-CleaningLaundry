@@ -1,0 +1,357 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SL Cleaning - Quote Requests</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .sidebar-active { background-color: #dbeafe; color: #1d4ed8; }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-pending { background-color: #fef3c7; color: #92400e; }
+        .status-in_progress { background-color: #dbeafe; color: #1e40af; }
+        .status-completed { background-color: #d1fae5; color: #065f46; }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border-left: 4px solid;
+        }
+        .alert-success { background-color: #d1fae5; border-color: #059669; color: #065f46; }
+        .alert-error { background-color: #fee2e2; border-color: #dc2626; color: #991b1b; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Flash Messages -->
+    <div id="flashMessages" class="fixed top-4 right-4 z-50 space-y-2">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} max-w-sm">
+                        <div class="flex items-center justify-between">
+                            <span>{{ message }}</span>
+                            <button onclick="this.parentElement.parentElement.remove()" class="ml-2">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white shadow-lg border-r border-gray-200 relative flex flex-col justify-between">
+            <div>
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-broom text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-bold text-xl text-gray-800">SL Cleaning</h1>
+                            <p class="text-sm text-gray-500">Admin Panel</p>
+                        </div>
+                    </div>
+                </div>
+                <nav class="p-4 space-y-2">
+                    <a href="/admin" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i class="fas fa-chart-bar w-5 text-center mr-3"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="/admin/quotes" class="sidebar-active flex items-center p-3 rounded-lg transition-colors">
+                        <i class="fas fa-file-invoice w-5 text-center mr-3"></i>
+                        <span>Quote Requests</span>
+                    </a>
+                    <a href="/admin/comments" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i class="fas fa-comments w-5 text-center mr-3"></i>
+                        <span>Reviews</span>
+                    </a>
+                    <a href="/admin/newsletter" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i class="fas fa-envelope w-5 text-center mr-3"></i>
+                        <span>Newsletter</span>
+                    </a>
+                    <a href="/admin/stats" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                        <i class="fas fa-cog w-5 text-center mr-3"></i>
+                        <span>Settings</span>
+                    </a>
+                </nav>
+            </div>
+            <div class="p-4">
+                <div class="bg-gray-100 rounded-lg p-3">
+                    <div class="flex items-center space-x-2 mb-2">
+                        <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-white text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-800">Admin User</p>
+                            <p class="text-xs text-gray-500">Online</p>
+                        </div>
+                    </div>
+                    <a href="/admin/logout" class="flex items-center justify-center w-full p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                        <i class="fas fa-sign-out-alt mr-2"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-8 overflow-auto">
+            <header class="bg-white border-b border-gray-200 px-8 py-6 mb-8 rounded-xl shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">Quote Requests</h1>
+                        <p class="text-gray-600">Manage all customer quote requests</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <input type="text" id="quoteSearch" class="border border-gray-300 rounded-lg px-3 py-1 text-sm" placeholder="Search quotes..." oninput="searchQuotes()">
+                    </div>
+                </div>
+            </header>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div class="overflow-x-auto">
+                    <table class="w-full" id="quotesTable">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Customer</th>
+                                <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Service</th>
+                                <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Status</th>
+                                <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Date</th>
+                                <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200" id="quotesBody">
+                            {% for quote in quotes %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4">
+                                    <div>
+                                        <div class="font-medium text-gray-900">{{ quote.name }}</div>
+                                        <div class="text-sm text-gray-500">{{ quote.email }}</div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-900">{{ quote.service }}</td>
+                                <td class="px-6 py-4">
+                                    <select class="status-select border border-gray-300 rounded-lg px-2 py-1 text-sm" onchange="updateStatus({{ quote.id }}, this.value)">
+                                        <option value="pending" {% if quote.status == 'pending' %}selected{% endif %}>Pending</option>
+                                        <option value="in_progress" {% if quote.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                        <option value="completed" {% if quote.status == 'completed' %}selected{% endif %}>Completed</option>
+                                    </select>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500">
+                                    {{ quote.created_at.split()[0] if quote.created_at else 'N/A' }}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex space-x-2">
+                                        <button onclick="viewQuote({{ quote.id }})" class="text-blue-600 hover:text-blue-700">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <form action="/admin/quotes/{{ quote.id }}/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this quote?');">
+                                            <button type="submit" class="text-red-600 hover:text-red-700">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Quote Modal -->
+    <div id="quoteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold">Quote Details</h3>
+                <button onclick="closeModal('quoteModal')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="quoteDetails"></div>
+        </div>
+    </div>
+
+    <script>
+        // Utility functions
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `alert alert-${type} max-w-sm`;
+            messageDiv.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span>${escapeHtml(message)}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-2">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            document.getElementById('flashMessages').appendChild(messageDiv);
+            setTimeout(() => {
+                if (messageDiv.parentElement) {
+                    messageDiv.remove();
+                }
+            }, 5000);
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+            document.getElementById(modalId).classList.remove('flex');
+        }
+
+        // View quote details
+        async function viewQuote(id) {
+            document.getElementById('quoteModal').classList.remove('hidden');
+            document.getElementById('quoteModal').classList.add('flex');
+            document.getElementById('quoteDetails').innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-2xl text-gray-400"></i>
+                    <p class="text-gray-500 mt-2">Loading quote details...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`/admin/quotes/${id}/details`);
+                if (response.ok) {
+                    const result = await response.json();
+                    if (!result.success) throw new Error(result.message);
+                    
+                    const quote = result;
+                    document.getElementById('quoteDetails').innerHTML = `
+                        <div class="space-y-4">
+                            <div><strong>Quote ID:</strong> #${quote.id}</div>
+                            <div><strong>Customer:</strong> ${escapeHtml(quote.name)}</div>
+                            <div><strong>Email:</strong> ${escapeHtml(quote.email)}</div>
+                            <div><strong>Phone:</strong> ${escapeHtml(quote.phone || 'Not provided')}</div>
+                            <div><strong>Address:</strong> ${escapeHtml(quote.address || 'Not provided')}</div>
+                            <div><strong>Service:</strong> ${escapeHtml(quote.service)}</div>
+                            <div><strong>Details:</strong> ${escapeHtml(quote.details || 'No additional details')}</div>
+                            <div><strong>Status:</strong> <span class="status-badge status-${quote.status}">${quote.status.replace('_', ' ').charAt(0).toUpperCase() + quote.status.replace('_', ' ').slice(1)}</span></div>
+                            <div><strong>Date:</strong> ${new Date(quote.created_at).toLocaleDateString()}</div>
+                            ${quote.attachments ? `<div><strong>Attachments:</strong> ${JSON.parse(quote.attachments).length} file(s)</div>` : ''}
+                        </div>
+                    `;
+                } else {
+                    throw new Error('Failed to fetch quote details');
+                }
+            } catch (error) {
+                console.error('Error loading quote:', error);
+                document.getElementById('quoteDetails').innerHTML = `
+                    <div class="text-center py-8 text-red-600">
+                        <i class="fas fa-exclamation-triangle text-2xl"></i>
+                        <p class="mt-2">Failed to load quote details: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Update quote status
+        async function updateStatus(id, status) {
+            if (['pending', 'in_progress', 'completed'].includes(status)) {
+                try {
+                    const response = await fetch(`/admin/quotes/${id}/status`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `status=${status}`
+                    });
+
+                    if (response.ok) {
+                        showMessage('Status updated successfully!', 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        throw new Error('Failed to update status');
+                    }
+                } catch (error) {
+                    console.error('Error updating status:', error);
+                    showMessage('Failed to update status', 'error');
+                }
+            } else {
+                showMessage('Invalid status selected', 'error');
+            }
+        }
+
+        // Search quotes
+        async function searchQuotes() {
+            const searchTerm = document.getElementById('quoteSearch').value.toLowerCase();
+            const tbody = document.getElementById('quotesBody');
+            const rows = tbody.getElementsByTagName('tr');
+
+            for (let row of rows) {
+                const name = row.querySelector('.font-medium').textContent.toLowerCase();
+                const email = row.querySelector('.text-sm').textContent.toLowerCase();
+                const service = row.cells[1].textContent.toLowerCase();
+                
+                if (name.includes(searchTerm) || email.includes(searchTerm) || service.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('click', function (e) {
+            if (e.target.id === 'quoteModal') {
+                closeModal('quoteModal');
+            }
+        });
+    </script>
+</body>
+</html>

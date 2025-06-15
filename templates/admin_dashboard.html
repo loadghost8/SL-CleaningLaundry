@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SL Cleaning - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .sidebar-active { background-color: #dbeafe; color: #1d4ed8; }
+        .card-hover { transition: transform 0.2s; }
+        .card-hover:hover { transform: translateY(-2px); }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-pending { background-color: #fef3c7; color: #92400e; }
+        .status-in_progress { background-color: #dbeafe; color: #1e40af; }
+        .status-completed { background-color: #d1fae5; color: #065f46; }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border-left: 4px solid;
+        }
+        .alert-success { background-color: #d1fae5; border-color: #059669; color: #065f46; }
+        .alert-error { background-color: #fee2e2; border-color: #dc2626; color: #991b1b; }
+        .alert-info { background-color: #dbeafe; border-color: #2563eb; color: #1e40af; }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+        }
+        @media (max-width: 640px) {
+            .chart-container {
+                height: 200px;
+            }
+            .stats-table {
+                display: block;
+            }
+            .stats-table thead {
+                display: none;
+            }
+            .stats-table tbody, .stats-table tr {
+                display: block;
+            }
+            .stats-table tr {
+                margin-bottom: 1rem;
+                border-bottom: 1px solid #e5e7eb;
+                padding-bottom: 1rem;
+            }
+            .stats-table td {
+                display: flex;
+                justify-content: space-between;
+                padding: 0.5rem 1rem;
+            }
+            .stats-table td:before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: #374151;
+                width: 40%;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Flash Messages -->
+    <div id="flashMessages" class="fixed top-4 right-4 z-50 space-y-2 sm:max-w-sm max-w-[calc(100%-2rem)]">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <div class="flex items-center justify-between">
+                            <span>{{ message }}</span>
+                            <button onclick="this.parentElement.parentElement.remove()" class="ml-2">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-white shadow-lg border-r border-gray-200 fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 -translate-x-full">
+            <div class="flex flex-col h-full justify-between">
+                <div>
+                    <div class="p-4 sm:p-6 border-b border-gray-200 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-broom text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <h1 class="font-bold text-lg sm:text-xl text-gray-800">SL Cleaning</h1>
+                                <p class="text-xs sm:text-sm text-gray-500">Admin Panel</p>
+                            </div>
+                        </div>
+                        <button class="md:hidden" onclick="toggleSidebar()">
+                            <i class="fas fa-times text-gray-600"></i>
+                        </button>
+                    </div>
+
+                    <nav class="p-4 space-y-2">
+                        <a href="/admin" class="sidebar-active flex items-center p-3 rounded-lg transition-colors">
+                            <i class="fas fa-chart-bar w-5 text-center mr-3"></i>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="/admin/quotes" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-file-invoice w-5 text-center mr-3"></i>
+                            <span>Quote Requests</span>
+                        </a>
+                        <a href="/admin/comments" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-comments w-5 text-center mr-3"></i>
+                            <span>Reviews</span>
+                        </a>
+                        <a href="/admin/newsletter" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-envelope w-5 text-center mr-3"></i>
+                            <span>Newsletter</span>
+                        </a>
+                        <a href="/admin/stats" class="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-cog w-5 text-center mr-3"></i>
+                            <span>Settings</span>
+                        </a>
+                    </nav>
+                </div>
+
+                <div class="p-4">
+                    <div class="bg-gray-100 rounded-lg p-3">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-800">Admin User</p>
+                                <p class="text-xs text-gray-500">Online</p>
+                            </div>
+                        </div>
+                        <a href="/admin/logout" class="flex items-center justify-center w-full p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                            <i class="fas fa-sign-out-alt mr-2"></i>
+                            <span>Logout</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Mobile Menu Button -->
+        <button class="md:hidden fixed top-4 left-4 z-50 bg-blue-600 text-white p-2 rounded-lg" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-auto md:ml-0 ml-0">
+            <header class="bg-white border-b border-gray-200 px-4 sm:px-8 py-4 sm:py-6">
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Dashboard Overview</h1>
+                        <p class="text-sm sm:text-base text-gray-600">Welcome back! Here's what's happening with your business.</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="text-right">
+                            <p class="text-xs sm:text-sm text-gray-500">Last updated</p>
+                            <p class="text-xs sm:text-sm font-medium" id="lastUpdated"></p>
+                        </div>
+                        <button onclick="refreshData()" class="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-sync-alt mr-2"></i>Refresh
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="p-4 sm:p-8 space-y-8">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-xl text-white card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-blue-100 text-sm">Jobs Completed</p>
+                                <p class="text-2xl sm:text-3xl font-bold" id="jobs_completed">{{ stats.jobs_completed or 0 }}</p>
+                                <p class="text-blue-100 text-xs mt-1" id="jobs_completed_change"></p>
+                            </div>
+                            <div class="bg-blue-400 p-3 rounded-lg">
+                                <i class="fas fa-check-circle text-xl sm:text-2xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-xl text-white card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-green-100 text-sm">Customer Satisfaction</p>
+                                <p class="text-2xl sm:text-3xl font-bold" id="customer_satisfaction">{{ stats.customer_satisfaction or 0 }}%</p>
+                                <p class="text-green-100 text-xs mt-1" id="customer_satisfaction_change"></p>
+                            </div>
+                            <div class="bg-green-400 p-3 rounded-lg">
+                                <i class="fas fa-heart text-xl sm:text-2xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-xl text-white card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-orange-100 text-sm">Monthly Bookings</p>
+                                <p class="text-2xl sm:text-3xl font-bold" id="monthly_bookings">{{ stats.monthly_bookings or 0 }}</p>
+                                <p class="text-orange-100 text-xs mt-1" id="monthly_bookings_change"></p>
+                            </div>
+                            <div class="bg-orange-400 p-3 rounded-lg">
+                                <i class="fas fa-calendar-alt text-xl sm:text-2xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-xl text-white card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-purple-100 text-sm">Newsletter Subscribers</p>
+                                <p class="text-2xl sm:text-3xl font-bold" id="newsletter_subscribers">{{ newsletter_count or 0 }}</p>
+                                <p class="text-purple-100 text-xs mt-1" id="newsletter_subscribers_change"></p>
+                            </div>
+                            <div class="bg-purple-400 p-3 rounded-lg">
+                                <i class="fas fa-users text-xl sm:text-2xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    <div class="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between mb-4 sm:mb-6">
+                            <h2 class="text-base sm:text-lg font-semibold text-gray-800">Business Performance</h2>
+                            <select id="performancePeriod" class="border border-gray-300 rounded-lg px-2 sm:px-3 py-1 text-sm" onchange="updatePerformanceChart()">
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="90">Last 90 days</option>
+                                <option value="365">This year</option>
+                            </select>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
+                        <div class="flex items-center justify-between mb-4 sm:mb-6">
+                            <h2 class="text-base sm:text-lg font-semibold text-gray-800">Service Distribution</h2>
+                            <div class="text-sm text-gray-500">Current month</div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="serviceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Quote Requests -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200">
+                        <div class="p-4 sm:p-6 border-b border-gray-200">
+                            <div class="flex items-center justify-between flex-wrap gap-4">
+                                <h2 class="text-base sm:text-lg font-semibold text-gray-800">Recent Quote Requests</h2>
+                                <div class="flex items-center space-x-4 w-full sm:w-auto">
+                                    <input type="text" id="quoteSearch" class="border border-gray-300 rounded-lg px-3 py-1 text-sm w-full sm:w-auto" placeholder="Search quotes..." oninput="searchQuotes()">
+                                    <a href="/admin/quotes" class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                                        View all <i class="fas fa-arrow-right ml-1"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full stats-table" id="quotesTable">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Customer</th>
+                                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Service</th>
+                                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Status</th>
+                                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Date</th>
+                                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-4 sm:px-6 py-3">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200" id="quotesBody">
+                                    {% for quote in quotes[:5] %}
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-4 sm:px-6 py-4" data-label="Customer">
+                                            <div>
+                                                <div class="font-medium text-gray-900">{{ quote.name }}</div>
+                                                <div class="text-sm text-gray-500">{{ quote.email }}</div>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 sm:px-6 py-4 text-sm text-gray-900" data-label="Service">{{ quote.service }}</td>
+                                        <td class="px-4 sm:px-6 py-4" data-label="Status">
+                                            <select class="status-select border border-gray-300 rounded-lg px-2 py-1 text-sm" onchange="updateStatus({{ quote.id }}, this.value)">
+                                                <option value="pending" {% if quote.status == 'pending' %}selected{% endif %}>Pending</option>
+                                                <option value="in_progress" {% if quote.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                                <option value="completed" {% if quote.status == 'completed' %}selected{% endif %}>Completed</option>
+                                            </select>
+                                        </td>
+                                        <td class="px-4 sm:px-6 py-4 text-sm text-gray-500" data-label="Date">
+                                            {{ quote.created_at.split()[0] if quote.created_at else 'N/A' }}
+                                        </td>
+                                        <td class="px-4 sm:px-6 py-4" data-label="Actions">
+                                            <div class="flex space-x-2">
+                                                <button onclick="viewQuote({{ quote.id }})" class="text-blue-600 hover:text-blue-700">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <form action="/admin/quotes/{{ quote.id }}/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this quote?');">
+                                                    <button type="submit" class="text-red-600 hover:text-red-700">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions & Alerts -->
+                    <div class="space-y-4 sm:space-y-6">
+                        <div class="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
+                            <h3 class="text-base sm:text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
+                            <div class="space-y-3">
+                                <button onclick="sendNewsletter()" class="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition-colors">
+                                    <i class="fas fa-envelope mr-2"></i>Send Newsletter
+                                </button>
+                                <button onclick="exportData()" class="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition-colors">
+                                    <i class="fas fa-download mr-2"></i>Export Data
+                                </button>
+                                <a href="/admin/stats" class="w-full bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center">
+                                    <i class="fas fa-chart-line mr-2"></i>View Reports
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-base sm:text-lg font-semibold text-gray-800">Pending Reviews</h3>
+                                <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">
+                                    {{ pending_comments|length }}
+                                </span>
+                            </div>
+                            <div class="space-y-3">
+                                {% for comment in pending_comments[:3] %}
+                                <div class="border-l-4 border-yellow-400 pl-4 py-2">
+                                    <div class="font-medium text-sm text-gray-800">{{ comment.name }}</div>
+                                    <div class="text-xs text-gray-500 mb-1">
+                                        {% for i in range(comment.rating) %}⭐{% endfor %}
+                                    </div>
+                                    <div class="text-sm text-gray-600">{{ comment.comment[:50] }}...</div>
+                                    <div class="mt-2 space-x-2">
+                                        <button onclick="approveComment({{ comment.id }})" class="text-xs bg-green-500 text-white px-2 py-1 rounded">
+                                            Approve
+                                        </button>
+                                        <button onclick="deleteComment({{ comment.id }})" class="text-xs bg-red-500 text-white px-2 py-1 rounded">
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                                {% if pending_comments|length > 3 %}
+                                <a href="/admin/comments" class="text-blue-600 hover:text-blue-700 text-sm">
+                                    View all {{ pending_comments|length }} pending reviews
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="quoteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl p-4 sm:p-6 w-full max-w-md sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base sm:text-lg font-semibold">Quote Details</h3>
+                <button onclick="closeModal('quoteModal')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="quoteDetails"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize data from Flask template
+        const stats = {{ stats | tojson | safe }};
+        let performanceChart, serviceChart;
+
+        // Toggle sidebar for mobile
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('-translate-x-full');
+        }
+
+        // Update last updated time
+        document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+
+        // Calculate percentage change from previous period
+        async function calculatePercentageChange(statName, currentValue) {
+            try {
+                const response = await fetch(`/api/performance_data?period=30`);
+                const data = await response.json();
+                if (!data.labels || !data.bookings || !data.jobs_completed) return '';
+
+                const currentMonth = data.labels[data.labels.length - 1];
+                const previousMonth = data.labels[data.labels.length - 2];
+                const current = statName === 'jobs_completed' ? data.jobs_completed[data.jobs_completed.length - 1] : 
+                              statName === 'monthly_bookings' ? data.bookings[data.bookings.length - 1] : currentValue;
+                const previous = statName === 'jobs_completed' ? data.jobs_completed[data.jobs_completed.length - 2] || 0 : 
+                               statName === 'monthly_bookings' ? data.bookings[data.jobs_completed.length - 2] || 0 : currentValue;
+
+                if (previous === 0) return current > 0 ? '+100%' : '0%';
+                const change = ((current - previous) / previous * 100).toFixed(1);
+                return `<i class="fas fa-arrow-${change >= 0 ? 'up' : 'down'} mr-1"></i>${change >= 0 ? '+' : ''}${change}% from last period`;
+            } catch (error) {
+                console.error('Error calculating percentage change:', error);
+                return '';
+            }
+        }
+
+        // Fetch performance data with period filter
+        async function fetchPerformanceData() {
+            const period = document.getElementById('performancePeriod').value;
+            try {
+                const response = await fetch(`/api/performance_data?period=${period}`);
+                if (response.ok) {
+                    return await response.json();
+                }
+                showMessage('Failed to fetch performance data', 'error');
+                return { labels: [], bookings: [], jobs_completed: [] };
+            } catch (error) {
+                console.error('Error fetching performance data:', error);
+                showMessage('Error fetching performance data', 'error');
+                return { labels: [], bookings: [], jobs_completed: [] };
+            }
+        }
+
+        // Fetch service distribution data
+        async function fetchServiceData() {
+            try {
+                const response = await fetch('/api/service_distribution');
+                if (response.ok) {
+                    return await response.json();
+                }
+                showMessage('Failed to fetch service data', 'error');
+                return { labels: [], data: [] };
+            } catch (error) {
+                console.error('Error fetching service data:', error);
+                showMessage('Error fetching service data', 'error');
+                return { labels: [], data: [] };
+            }
+        }
+
+        // Initialize charts
+        async function initCharts() {
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+            const serviceCtx = document.getElementById('serviceChart').getContext('2d');
+            const performanceData = await fetchPerformanceData();
+            const serviceData = await fetchServiceData();
+
+            if (performanceChart) performanceChart.destroy();
+            if (serviceChart) serviceChart.destroy();
+
+            performanceChart = new Chart(performanceCtx, {
+                type: 'line',
+                data: {
+                    labels: performanceData.labels.length ? performanceData.labels : ['No Data'],
+                    datasets: [
+                        {
+                            label: 'Jobs Completed',
+                            data: performanceData.jobs_completed.length ? performanceData.jobs_completed : [0],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'New Bookings',
+                            data: performanceData.bookings.length ? performanceData.bookings : [0],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.raw}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            title: { display: true, text: 'Count' } 
+                        },
+                        x: { 
+                            title: { 
+                                display: true, 
+                                text: document.getElementById('performancePeriod').value === 'daily' ? 'Day' : 
+                                      document.getElementById('performancePeriod').value === 'weekly' ? 'Week' : 
+                                      document.getElementById('performancePeriod').value === '90' ? 'Day' : 'Month' 
+                            },
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    const period = document.getElementById('performancePeriod').value;
+                                    const label = this.getLabelForValue(value);
+                                    if (period === 'daily' || period === '90') {
+                                        return new Date(label).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' });
+                                    } else if (period === 'weekly') {
+                                        return `Week ${label.split('-')[1]} (${label.split('-')[0]})`;
+                                    } else {
+                                        return new Date(label + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            serviceChart = new Chart(serviceCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: serviceData.labels.length ? serviceData.labels : ['No Data'],
+                    datasets: [{
+                        data: serviceData.data.length ? serviceData.data : [1],
+                        backgroundColor: serviceData.labels.length ? 
+                            ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#14b8a6'] : 
+                            ['#e5e7eb'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${context.raw}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update performance chart based on period selection
+        async function updatePerformanceChart() {
+            if (performanceChart) performanceChart.destroy();
+            const performanceData = await fetchPerformanceData();
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+
+            performanceChart = new Chart(performanceCtx, {
+                type: 'line',
+                data: {
+                    labels: performanceData.labels.length ? performanceData.labels : ['No Data'],
+                    datasets: [
+                        {
+                            label: 'Jobs Completed',
+                            data: performanceData.jobs_completed.length ? performanceData.jobs_completed : [0],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'New Bookings',
+                            data: performanceData.bookings.length ? performanceData.bookings : [0],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.raw}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            title: { display: true, text: 'Count' } 
+                        },
+                        x: { 
+                            title: { 
+                                display: true, 
+                                text: document.getElementById('performancePeriod').value === 'daily' ? 'Day' : 
+                                      document.getElementById('performancePeriod').value === 'weekly' ? 'Week' : 
+                                      document.getElementById('performancePeriod').value === '90' ? 'Day' : 'Month' 
+                            },
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    const period = document.getElementById('performancePeriod').value;
+                                    const label = this.getLabelForValue(value);
+                                    if (period === 'daily' || period === '90') {
+                                        return new Date(label).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' });
+                                    } else if (period === 'weekly') {
+                                        return `Week ${label.split('-')[1]} (${label.split('-')[0]})`;
+                                    } else {
+                                        return new Date(label + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Search quotes
+        async function searchQuotes() {
+            const searchTerm = document.getElementById('quoteSearch').value.toLowerCase();
+            try {
+                const response = await fetch('/admin/quotes');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch quotes');
+                }
+                
+                const quotes = await response.json();
+                
+                const filteredQuotes = quotes.filter(quote => 
+                    quote.name.toLowerCase().includes(searchTerm) ||
+                    quote.email.toLowerCase().includes(searchTerm) ||
+                    quote.service.toLowerCase().includes(searchTerm)
+                );
+
+                const tbody = document.getElementById('quotesBody');
+                tbody.innerHTML = filteredQuotes.map(quote => `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 sm:px-6 py-4" data-label="Customer">
+                            <div>
+                                <div class="font-medium text-gray-900">${escapeHtml(quote.name)}</div>
+                                <div class="text-sm text-gray-500">${escapeHtml(quote.email)}</div>
+                            </div>
+                        </td>
+                        <td class="px-4 sm:px-6 py-4 text-sm text-gray-900" data-label="Service">${escapeHtml(quote.service)}</td>
+                        <td class="px-4 sm:px-6 py-4" data-label="Status">
+                            <select class="status-select border border-gray-300 rounded-lg px-2 py-1 text-sm" onchange="updateStatus(${quote.id}, this.value)">
+                                <option value="pending" ${quote.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                <option value="in_progress" ${quote.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                                <option value="completed" ${quote.status === 'completed' ? 'selected' : ''}>Completed</option>
+                            </select>
+                        </td>
+                        <td class="px-4 sm:px-6 py-4 text-sm text-gray-500" data-label="Date">
+                            ${quote.created_at ? escapeHtml(quote.created_at.split(' ')[0]) : 'N/A'}
+                        </td>
+                        <td class="px-4 sm:px-6 py-4" data-label="Actions">
+                            <div class="flex space-x-2">
+                                <button onclick="viewQuote(${quote.id})" class="text-blue-600 hover:text-blue-700">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <form action="/admin/quotes/${quote.id}/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this quote?');">
+                                    <button type="submit" class="text-red-600 hover:text-red-700">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error searching quotes:', error);
+                showMessage('Failed to search quotes', 'error');
+            }
+        }
+
+        // Update quote status
+        async function updateStatus(quoteId, status) {
+            try {
+                const response = await fetch(`/admin/quotes/${quoteId}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `status=${status}`
+                });
+                if (response.ok) {
+                    showMessage('Status updated successfully!', 'success');
+                    refreshData();
+                } else {
+                    showMessage('Failed to update status', 'error');
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+                showMessage('Error updating status', 'error');
+            }
+        }
+
+        // View quote details
+        async function viewQuote(quoteId) {
+            try {
+                const response = await fetch(`/admin/quotes/${quoteId}/details`);
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('quoteDetails').innerHTML = `
+                        <p><strong>ID:</strong> ${escapeHtml(data.id)}</p>
+                        <p><strong>Name:</strong> ${escapeHtml(data.name)}</p>
+                        <p><strong>Email:</strong> ${escapeHtml(data.email)}</p>
+                        <p><strong>Phone:</strong> ${escapeHtml(data.phone)}</p>
+                        <p><strong>Address:</strong> ${escapeHtml(data.address || 'N/A')}</p>
+                        <p><strong>Service:</strong> ${escapeHtml(data.service)}</p>
+                        <p><strong>Details:</strong> ${escapeHtml(data.details || 'N/A')}</p>
+                        <p><strong>Status:</strong> ${escapeHtml(data.status)}</p>
+                        <p><strong>Created:</strong> ${escapeHtml(data.created_at)}</p>
+                        <p><strong>Attachments:</strong> ${data.attachments ? JSON.parse(data.attachments).map(file => `<a href="/uploads/${escapeHtml(file)}" class="text-blue-600 hover:underline" target="_blank">${escapeHtml(file)}</a>`).join(', ') : 'None'}</p>
+                    `;
+                    document.getElementById('quoteModal').classList.remove('hidden');
+                    document.getElementById('quoteModal').classList.add('flex');
+                } else {
+                    showMessage(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error fetching quote details:', error);
+                showMessage('Error fetching quote details', 'error');
+            }
+        }
+
+        // Approve comment
+        async function approveComment(commentId) {
+            try {
+                const response = await fetch(`/admin/comments/${commentId}/approve`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    showMessage('Comment approved successfully!', 'success');
+                    location.reload();
+                } else {
+                    showMessage('Failed to approve comment', 'error');
+                }
+            } catch (error) {
+                console.error('Error approving comment:', error);
+                showMessage('Error approving comment', 'error');
+            }
+        }
+
+        // Delete comment
+        async function deleteComment(commentId) {
+            if (confirm('Are you sure you want to delete this comment?')) {
+                try {
+                    const response = await fetch(`/admin/comments/${commentId}/delete`, {
+                        method: 'POST'
+                    });
+                    if (response.ok) {
+                        showMessage('Comment deleted successfully!', 'success');
+                        location.reload();
+                    } else {
+                        showMessage('Failed to delete comment', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error deleting comment:', error);
+                    showMessage('Error deleting comment', 'error');
+                }
+            }
+        }
+
+        // Close modal
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+            document.getElementById(modalId).classList.remove('flex');
+        }
+
+        // Refresh data
+        async function refreshData() {
+            try {
+                const response = await fetch('/api/stats');
+                const newStats = await response.json();
+                document.getElementById('jobs_completed').textContent = newStats.jobs_completed || 0;
+                document.getElementById('customer_satisfaction').textContent = `${newStats.customer_satisfaction || 0}%`;
+                document.getElementById('monthly_bookings').textContent = newStats.monthly_bookings || 0;
+                document.getElementById('newsletter_subscribers').textContent = newStats.newsletter_subscribers || 0;
+
+                // Update percentage changes
+                document.getElementById('jobs_completed_change').innerHTML = await calculatePercentageChange('jobs_completed', newStats.jobs_completed);
+                document.getElementById('customer_satisfaction_change').innerHTML = await calculatePercentageChange('customer_satisfaction', newStats.customer_satisfaction);
+                document.getElementById('monthly_bookings_change').innerHTML = await calculatePercentageChange('monthly_bookings', newStats.monthly_bookings);
+                document.getElementById('newsletter_subscribers_change').innerHTML = await calculatePercentageChange('newsletter_subscribers', newStats.newsletter_subscribers);
+
+                document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+                await initCharts();
+            } catch (error) {
+                console.error('Error refreshing data:', error);
+                showMessage('Error refreshing data', 'error');
+            }
+        }
+
+        // Send newsletter (placeholder)
+        function sendNewsletter() {
+            showMessage('Newsletter sending functionality not implemented yet.', 'info');
+        }
+
+        // Export data
+        async function exportData() {
+            try {
+                const response = await fetch('/api/export/newsletter', {
+                    method: 'GET'
+                });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `newsletter_subscribers_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    showMessage('Subscribers exported successfully!', 'success');
+                } else {
+                    throw new Error('Failed to export data');
+                }
+            } catch (error) {
+                console.error('Error exporting data:', error);
+                showMessage('Failed to export data', 'error');
+            }
+        }
+
+        // Show flash message
+        function showMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `alert alert-${type} max-w-sm`;
+            messageDiv.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span>${escapeHtml(message)}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-2">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            document.getElementById('flashMessages').appendChild(messageDiv);
+            setTimeout(() => {
+                if (messageDiv.parentElement) {
+                    messageDiv.remove();
+                }
+            }, 5000);
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(unsafe) {
+            if (unsafe === null || unsafe === undefined) return '';
+            return unsafe.toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Initialize on page load
+        window.onload = async () => {
+            await refreshData();
+            await initCharts();
+        };
+    </script>
+</body>
+</html>

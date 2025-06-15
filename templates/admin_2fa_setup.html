@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup 2FA - SL Cleaning Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen py-8">
+    <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8">
+        <h1 class="text-2xl font-bold mb-6">Setup Two-Factor Authentication</h1>
+        
+        <div class="space-y-6">
+            <div class="text-center">
+                <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code" class="mx-auto border rounded-lg">
+                <p class="mt-4 text-sm text-gray-600">Scan this QR code with your authenticator app</p>
+            </div>
+            
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <p class="text-sm font-medium text-gray-700">Manual entry key:</p>
+                <code class="text-sm bg-white px-2 py-1 rounded border">{{ secret }}</code>
+            </div>
+            
+            <form action="/admin/enable-2fa" method="POST">
+                <div class="mb-4">
+                    <label for="token" class="block text-sm font-medium text-gray-700">Enter verification code:</label>
+                    <input type="text" id="token" name="token" class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                </div>
+                <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                    Enable 2FA
+                </button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

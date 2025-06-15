@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify 2FA - SL Cleaning Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
+        <h1 class="text-xl font-bold mb-6 text-center">Two-Factor Authentication</h1>
+        
+        <form action="/admin/verify-2fa" method="POST" class="space-y-4">
+            <div>
+                <label for="token" class="block text-sm font-medium text-gray-700">Authentication Code</label>
+                <input type="text" id="token" name="token" class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-center" placeholder="000000" maxlength="6">
+            </div>
+            
+            <div class="text-center">
+                <span class="text-sm text-gray-500">or</span>
+            </div>
+            
+            <div>
+                <label for="backup_code" class="block text-sm font-medium text-gray-700">Backup Code</label>
+                <input type="text" id="backup_code" name="backup_code" class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-center" placeholder="XXXX-XXXX">
+            </div>
+            
+            <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700">
+                Verify & Login
+            </button>
+        </form>
+    </div>
+</body>
+</html>
