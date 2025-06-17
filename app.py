@@ -38,8 +38,14 @@ ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
 ADMIN_PASSWORD_HASH = generate_password_hash(os.getenv("ADMIN_PASSWORD"))
 
 # Validate admin credentials
-if not ADMIN_USERNAME or not os.getenv("ADMIN_PASSWORD"):
-    raise ValueError("ADMIN_USERNAME and ADMIN_PASSWORD must be set in environment variables")
+
+# admin_password = os.getenv("ADMIN_PASSWORD")
+# print("DEBUG >> ADMIN_PASSWORD from env:", admin_password)
+
+# if not admin_password:
+#     raise RuntimeError("ADMIN_PASSWORD is not set in Railway environment variables.")
+
+# ADMIN_PASSWORD_HASH = generate_password_hash(admin_password)
 
 # IP Whitelisting Configuration
 ADMIN_IP_WHITELIST = os.getenv("ADMIN_IP_WHITELIST", "").split(",")
