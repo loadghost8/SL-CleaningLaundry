@@ -38,14 +38,8 @@ ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
 ADMIN_PASSWORD_HASH = generate_password_hash(os.getenv("ADMIN_PASSWORD"))
 
 # Validate admin credentials
-
-# admin_password = os.getenv("ADMIN_PASSWORD")
-# print("DEBUG >> ADMIN_PASSWORD from env:", admin_password)
-
-# if not admin_password:
-#     raise RuntimeError("ADMIN_PASSWORD is not set in Railway environment variables.")
-
-# ADMIN_PASSWORD_HASH = generate_password_hash(admin_password)
+if not ADMIN_USERNAME or not os.getenv("ADMIN_PASSWORD"):
+    raise ValueError("ADMIN_USERNAME and ADMIN_PASSWORD must be set in environment variables")
 
 # IP Whitelisting Configuration
 ADMIN_IP_WHITELIST = os.getenv("ADMIN_IP_WHITELIST", "").split(",")
@@ -1152,3 +1146,7 @@ def server_error(e):
 if __name__ == '__main__':
     init_db()
     app.run(debug=True)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+with app.app_context():
+    db.create_all()
