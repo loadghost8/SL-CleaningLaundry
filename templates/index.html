@@ -6,9 +6,106 @@
   <title>SL Cleaning & Laundry Services - Professional Cleaning in Reading, UK</title>
   <meta name="description" content="Professional residential & commercial cleaning services in Reading, UK. Free quotes, 7 days a week. Expert cleaning with constant communication until job completion.">
   <meta name="keywords" content="cleaning services, Reading UK, residential cleaning, commercial cleaning, laundry services, professional cleaners">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/banner-logo.jpg') }}">
+  <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='images/banner-logo.jpg') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/banner-logo.jpg') }}">
+  
+  <!-- Font Awesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  
+  <style>
+    .social-links {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .social-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 50px;
+        height: 50px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        color: rgba(255, 255, 255, 0.6);
+        text-decoration: none;
+        transition: all 0.3s ease;
+        font-size: 1.5rem;
+        cursor: not-allowed;
+        position: relative;
+    }
+    
+    .social-link:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateY(-2px);
+        color: #ffffff;
+    }
+    
+    .social-link.active {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+        cursor: pointer;
+    }
+    
+    .social-link.active:hover {
+        background: rgba(16, 185, 129, 0.3);
+        color: #ffffff;
+    }
+    
+    .social-link:not(.active)::after {
+        content: 'Coming Soon';
+        position: absolute;
+        bottom: -30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        white-space: nowrap;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+        pointer-events: none;
+    }
+    
+    .social-link:not(.active):hover::after {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .social-link.active::after {
+        content: 'Call Now';
+        position: absolute;
+        bottom: -30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        white-space: nowrap;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+        pointer-events: none;
+    }
+    
+    .social-link.active:hover::after {
+        opacity: 1;
+        visibility: visible;
+    }
+  </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -493,10 +590,11 @@
             </div>
             
             <div class="social-links">
-                <a href="#" class="social-link" title="Facebook">📘</a>
-                <a href="#" class="social-link" title="Instagram">📷</a>
-                <a href="#" class="social-link" title="Twitter">🐦</a>
-                <a href="tel:+447479691603" class="social-link" title="Call Us">📞</a>
+                <a href="#" class="social-link" title="Facebook - Coming Soon"><i class="fab fa-facebook-f"></i></a>
+                <a href="#" class="social-link" title="Instagram - Coming Soon"><i class="fab fa-instagram"></i></a>
+                <a href="#" class="social-link" title="Twitter - Coming Soon"><i class="fab fa-twitter"></i></a>
+                <a href="#" class="social-link" title="LinkedIn - Coming Soon"><i class="fab fa-linkedin-in"></i></a>
+                <a href="tel:+447479691603" class="social-link active" title="Call Us Now"><i class="fas fa-phone"></i></a>
             </div>
             
             <div style="display: flex; justify-content: center; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap;">
@@ -504,6 +602,7 @@
                 <a href="#about" style="color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.3s ease;">About</a>
                 <a href="#services" style="color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.3s ease;">Services</a>
                 <a href="#contact" style="color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.3s ease;">Contact</a>
+                <a href="{{ url_for('admin_login') }}" style="color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.3s ease;">Admin</a>
                 <a href="#" style="color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.3s ease;">Privacy Policy</a>
             </div>
             
@@ -520,7 +619,7 @@
     </footer>
 
     <!-- Floating Action Button -->
-    <a href="tel:+447479691603" class="fab" title="Call Now">📞</a>
+    <a href="tel:+447479691603" class="fab" title="Call Now"><i class="fas fa-phone"></i></a>
 
     <!-- Load your JavaScript -->
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
