@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, flash, redirect, url_for, jsonify, session, Response
-from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
 import smtplib
 import ssl
@@ -12,6 +11,8 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import logging
+from datetime import datetime
+import sqlite3
 from functools import wraps
 import json
 import csv
@@ -27,119 +28,149 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'fallbacksecretkey')
-app.permanent_session_lifetime = timedelta(hours=2)
-
-# SQLAlchemy configuration
-# Use SQLite for development; switch to PostgreSQL for production
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///cleaning_service.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = 'Uploads'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-app.config['SESSION_COOKIE_SECURE'] = True
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-
-db = SQLAlchemy(app)
-
+app.permanent_session_lifetime = timedelta(hours=2)  # Default timeout
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", EMAIL_ADDRESS)
+
+# Admin credentials
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
 ADMIN_PASSWORD_HASH = generate_password_hash(os.getenv("ADMIN_PASSWORD"))
 
+# Validate admin credentials
 if not ADMIN_USERNAME or not os.getenv("ADMIN_PASSWORD"):
     raise ValueError("ADMIN_USERNAME and ADMIN_PASSWORD must be set in environment variables")
 
+# IP Whitelisting Configuration
 ADMIN_IP_WHITELIST = os.getenv("ADMIN_IP_WHITELIST", "").split(",")
 ADMIN_IP_WHITELIST = [ip.strip() for ip in ADMIN_IP_WHITELIST if ip.strip()]
 
+# Rate limiting storage
 login_attempts = {}
-RATE_LIMIT_ATTEMPTS = 5
-RATE_LIMIT_WINDOW = 900
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'doc', 'docx'}
+RATE_LIMIT_ATTEMPTS = 5  # Max attempts
+RATE_LIMIT_WINDOW = 900  # 15 minutes in seconds
 
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+UPLOAD_FOLDER = 'Uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'doc', 'docx'}
+MAX_FILE_SIZE = 16 * 1024 * 1024
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# SQLAlchemy Models
-class Quote(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, nullable=False)
-    email = db.Column(db.String, nullable=False)
-    phone = db.Column(db.String, nullable=False)
-    address = db.Column(db.String)
-    service = db.Column(db.String, nullable=False)
-    details = db.Column(db.Text)
-    attachments = db.Column(db.JSON)
-    status = db.Column(db.String, default='pending')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-class NewsletterSubscription(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String, nullable=False, unique=True)
-    subscribed_at = db.Column(db.DateTime, default=datetime.utcnow)
-    active = db.Column(db.Boolean, default=True)
-
-class Comment(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, nullable=False)
-    email = db.Column(db.String, nullable=False)
-    rating = db.Column(db.Integer)
-    comment = db.Column(db.Text, nullable=False)
-    approved = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-class ContactMessage(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, nullable=False)
-    email = db.Column(db.String, nullable=False)
-    subject = db.Column(db.String)
-    message = db.Column(db.Text, nullable=False)
-    status = db.Column(db.String, default='unread')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-class BusinessStat(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    stat_name = db.Column(db.String, nullable=False, unique=True)
-    stat_value = db.Column(db.Integer, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-class Admin2FA(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    secret_key = db.Column(db.String, nullable=False)
-    is_enabled = db.Column(db.Boolean, default=False)
-    backup_codes = db.Column(db.JSON)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+DATABASE = 'cleaning_service.db'
 
 def init_db():
-    with app.app_context():
-        db.create_all()
-        
-        default_stats = [
-            ('jobs_completed', 0),
-            ('customer_satisfaction', 0),
-            ('monthly_bookings', 0),
-            ('areas_served', 0),
-            ('years_experience', 0),
-            ('newsletter_subscribers', 0)
-        ]
-        
-        for stat_name, stat_value in default_stats:
-            if not BusinessStat.query.filter_by(stat_name=stat_name).first():
-                stat = BusinessStat(stat_name=stat_name, stat_value=stat_value)
-                db.session.add(stat)
-        db.session.commit()
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS quotes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            address TEXT,
+            service TEXT NOT NULL,
+            details TEXT,
+            attachments TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS newsletter_subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            subscribed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            active BOOLEAN DEFAULT 1
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            rating INTEGER CHECK(rating >= 1 AND rating <= 5),
+            comment TEXT NOT NULL,
+            approved BOOLEAN DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS contact_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            subject TEXT,
+            message TEXT NOT NULL,
+            status TEXT DEFAULT 'unread',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS business_stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            stat_name TEXT UNIQUE NOT NULL,
+            stat_value INTEGER NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS admin_2fa (
+            id INTEGER PRIMARY KEY,
+            secret_key TEXT NOT NULL,
+            is_enabled BOOLEAN DEFAULT 0,
+            backup_codes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    default_stats = [
+        ('jobs_completed', 0),
+        ('customer_satisfaction', 0),
+        ('monthly_bookings', 0),
+        ('areas_served', 0),
+        ('years_experience', 0),
+        ('newsletter_subscribers', 0)
+    ]
+
+    for stat_name, stat_value in default_stats:
+        cursor.execute('''
+            INSERT OR IGNORE INTO business_stats (stat_name, stat_value)
+            VALUES (?, ?)
+        ''', (stat_name, stat_value))
+
+    conn.commit()
+    conn.close()
 
 def update_quote_status_db(quote_id, new_status):
-    quote = Quote.query.get_or_404(quote_id)
-    quote.status = new_status
-    quote.updated_at = datetime.utcnow()
-    db.session.commit()
+    """Update quote status in database"""
+    conn = get_db_connection()
+    conn.execute("UPDATE quotes SET status = ? WHERE id = ?", (new_status, quote_id))
+    conn.commit()
+    conn.close()
+
+def get_db_connection():
+    """Get database connection"""
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def ip_whitelist_required(f):
+    """Decorator to check IP whitelist for admin routes"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if ADMIN_IP_WHITELIST:
@@ -151,6 +182,7 @@ def ip_whitelist_required(f):
     return decorated_function
 
 def login_required(f):
+    """Decorator to require admin login"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'admin_logged_in' not in session:
@@ -162,6 +194,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def send_email(to_email, subject, body, attachments=None):
+    """Send email with optional attachments"""
     try:
         msg = MIMEMultipart()
         msg['From'] = EMAIL_ADDRESS
@@ -196,15 +229,21 @@ def send_email(to_email, subject, body, attachments=None):
         return False
 
 def update_stat(stat_name, increment=1):
-    stat = BusinessStat.query.filter_by(stat_name=stat_name).first()
-    if stat:
-        stat.stat_value += increment
-        stat.updated_at = datetime.utcnow()
-        db.session.commit()
+    """Update business statistics"""
+    conn = get_db_connection()
+    conn.execute('''
+        UPDATE business_stats 
+        SET stat_value = stat_value + ?, updated_at = CURRENT_TIMESTAMP
+        WHERE stat_name = ?
+    ''', (increment, stat_name))
+    conn.commit()
+    conn.close()
 
 @app.before_request
 def make_session_permanent():
+    """Enhanced session management with flexible timeouts"""
     session.permanent = True
+    
     if 'admin_logged_in' in session:
         last_activity = session.get('last_activity')
         session_duration = session.get('session_duration', 'regular')
@@ -212,6 +251,7 @@ def make_session_permanent():
         if last_activity:
             last_activity_time = datetime.fromisoformat(last_activity)
             time_diff = datetime.now() - last_activity_time
+            
             timeout = timedelta(days=30) if session_duration == 'remember_me' else timedelta(hours=2)
             
             if time_diff > timeout:
@@ -223,10 +263,12 @@ def make_session_permanent():
 
 @app.route('/')
 def index():
+    """Main page with newsletter subscription"""
     return render_template('index.html')
 
 @app.route('/contact', methods=['POST'])
 def contact():
+    """Handle contact form submissions"""
     try:
         name = request.form.get('name', '').strip()
         email = request.form.get('email', '').strip()
@@ -252,18 +294,15 @@ def contact():
                     uploaded_files.append(filepath)
                     attachment_names.append(filename)
         
-        quote = Quote(
-            name=name,
-            email=email,
-            phone=phone,
-            address=address,
-            service=service,
-            details=details,
-            attachments=attachment_names
-        )
-        db.session.add(quote)
-        db.session.commit()
-        quote_id = quote.id
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO quotes (name, email, phone, address, service, details, attachments)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (name, email, phone, address, service, details, json.dumps(attachment_names)))
+        quote_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
         
         admin_subject = f"🏠 New Quote Request from {name} (#{quote_id})"
         admin_body = f"""
@@ -372,7 +411,6 @@ The SL Cleaning & Laundry Services Team
                 'message': 'There was an error submitting your request. Please try calling us directly at +44 7479 691603.'
             }), 500
     except Exception as e:
-        db.session.rollback()
         logger.error(f"Contact form error: {e}")
         return jsonify({
             'success': False,
@@ -381,20 +419,25 @@ The SL Cleaning & Laundry Services Team
 
 @app.route('/newsletter', methods=['POST'])
 def newsletter():
+    """Handle newsletter subscription via AJAX"""
     try:
         email = request.form.get('email', '').strip()
         
         if not email:
             return jsonify({'success': False, 'message': 'Please provide a valid email address.'}), 400
         
+        conn = get_db_connection()
         try:
-            subscription = NewsletterSubscription(email=email)
-            db.session.add(subscription)
-            db.session.commit()
+            conn.execute('INSERT INTO newsletter_subscriptions (email) VALUES (?)', (email,))
+            conn.commit()
+            
             update_stat('newsletter_subscribers', 1)
-        except db.exc.IntegrityError:
-            db.session.rollback()
+            
+        except sqlite3.IntegrityError:
+            conn.close()
             return jsonify({'success': False, 'message': 'This email is already subscribed to our newsletter.'}), 400
+        
+        conn.close()
         
         email_subject = '🎉 Welcome to SL Cleaning & Laundry - Your 10% Discount Inside!'
         email_body = f"""\
@@ -478,7 +521,6 @@ Creating spotless environments across Reading, UK
             }), 500
             
     except Exception as e:
-        db.session.rollback()
         logger.error(f"Newsletter subscription error: {e}")
         return jsonify({
             'success': False,
@@ -487,6 +529,7 @@ Creating spotless environments across Reading, UK
 
 @app.route('/comments', methods=['POST'])
 def add_comment():
+    """Add a new comment/review"""
     try:
         name = request.form.get('name', '').strip()
         email = request.form.get('email', '').strip()
@@ -499,9 +542,13 @@ def add_comment():
         if rating < 1 or rating > 5:
             return jsonify({'success': False, 'message': 'Rating must be between 1 and 5.'}), 400
         
-        new_comment = Comment(name=name, email=email, rating=rating, comment=comment)
-        db.session.add(new_comment)
-        db.session.commit()
+        conn = get_db_connection()
+        conn.execute('''
+            INSERT INTO comments (name, email, rating, comment)
+            VALUES (?, ?, ?, ?)
+        ''', (name, email, rating, comment))
+        conn.commit()
+        conn.close()
         
         return jsonify({
             'success': True,
@@ -509,7 +556,6 @@ def add_comment():
         })
         
     except Exception as e:
-        db.session.rollback()
         logger.error(f"Comment submission error: {e}")
         return jsonify({
             'success': False,
@@ -518,23 +564,37 @@ def add_comment():
 
 @app.route('/api/comments')
 def get_comments():
-    comments = Comment.query.filter_by(approved=True).order_by(Comment.created_at.desc()).limit(10).all()
+    """Get approved comments for display"""
+    conn = get_db_connection()
+    comments = conn.execute('''
+        SELECT name, rating, comment, created_at
+        FROM comments
+        WHERE approved = 1
+        ORDER BY created_at DESC
+        LIMIT 10
+    ''').fetchall()
+    conn.close()
     
     return jsonify([{
-        'name': comment.name,
-        'rating': comment.rating,
-        'comment': comment.comment,
-        'date': comment.created_at.isoformat()
+        'name': comment['name'],
+        'rating': comment['rating'],
+        'comment': comment['comment'],
+        'date': comment['created_at']
     } for comment in comments])
 
 @app.route('/api/stats')
 def get_stats():
-    stats = BusinessStat.query.all()
-    return jsonify({stat.stat_name: stat.stat_value for stat in stats})
+    """Get business statistics"""
+    conn = get_db_connection()
+    stats = conn.execute('SELECT stat_name, stat_value FROM business_stats').fetchall()
+    conn.close()
+    
+    return jsonify({stat['stat_name']: stat['stat_value'] for stat in stats})
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 @ip_whitelist_required
 def admin_login():
+    """Admin login page with rate limiting"""
     client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
     
     current_time = time.time()
@@ -565,8 +625,11 @@ def admin_login():
             else:
                 session['session_duration'] = 'regular'
             
-            admin_2fa = Admin2FA.query.get(1)
-            if admin_2fa and admin_2fa.is_enabled:
+            conn = get_db_connection()
+            admin_2fa = conn.execute('SELECT * FROM admin_2fa WHERE id = 1').fetchone()
+            conn.close()
+
+            if admin_2fa and admin_2fa['is_enabled']:
                 session['temp_admin_login'] = True
                 return redirect(url_for('verify_2fa'))
             
@@ -585,6 +648,7 @@ def admin_login():
 @app.route('/admin/verify-2fa', methods=['GET', 'POST'])
 @ip_whitelist_required
 def verify_2fa():
+    """Verify 2FA token"""
     if 'temp_admin_login' not in session:
         return redirect(url_for('admin_login'))
     
@@ -592,29 +656,34 @@ def verify_2fa():
         token = request.form.get('token')
         backup_code = request.form.get('backup_code')
         
-        admin_2fa = Admin2FA.query.get(1)
+        conn = get_db_connection()
+        admin_2fa = conn.execute('SELECT * FROM admin_2fa WHERE id = 1').fetchone()
+        
         if admin_2fa:
             verified = False
             
             if token:
-                totp = pyotp.TOTP(admin_2fa.secret_key)
+                totp = pyotp.TOTP(admin_2fa['secret_key'])
                 verified = totp.verify(token)
             
             elif backup_code:
-                backup_codes = json.loads(admin_2fa.backup_codes or '[]')
+                backup_codes = json.loads(admin_2fa['backup_codes'] or '[]')
                 if backup_code.upper() in backup_codes:
                     backup_codes.remove(backup_code.upper())
-                    admin_2fa.backup_codes = json.dumps(backup_codes)
-                    db.session.commit()
+                    conn.execute('UPDATE admin_2fa SET backup_codes = ? WHERE id = 1', 
+                               (json.dumps(backup_codes),))
+                    conn.commit()
                     verified = True
             
             if verified:
                 session.pop('temp_admin_login', None)
                 session['admin_logged_in'] = True
                 session['last_activity'] = datetime.now().isoformat()
+                conn.close()
                 flash('Login successful!', 'success')
                 return redirect(url_for('admin_dashboard'))
         
+        conn.close()
         flash('Invalid token or backup code.', 'danger')
     
     return render_template('admin_2fa_verify.html')
@@ -623,14 +692,20 @@ def verify_2fa():
 @login_required
 @ip_whitelist_required
 def setup_2fa():
-    admin_2fa = Admin2FA.query.get(1)
-    if not admin_2fa:
-        secret = pyotp.random_base32()
-        admin_2fa = Admin2FA(id=1, secret_key=secret)
-        db.session.add(admin_2fa)
-        db.session.commit()
+    """Setup 2FA for admin"""
+    conn = get_db_connection()
+    existing_2fa = conn.execute('SELECT * FROM admin_2fa WHERE id = 1').fetchone()
     
-    totp_uri = pyotp.totp.TOTP(admin_2fa.secret_key).provisioning_uri(
+    if not existing_2fa:
+        secret = pyotp.random_base32()
+        conn.execute('INSERT INTO admin_2fa (id, secret_key) VALUES (1, ?)', (secret,))
+        conn.commit()
+    else:
+        secret = existing_2fa['secret_key']
+    
+    conn.close()
+    
+    totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(
         name=ADMIN_USERNAME,
         issuer_name="SL Cleaning Admin"
     )
@@ -647,36 +722,46 @@ def setup_2fa():
     qr_code_data = base64.b64encode(img_buffer.getvalue()).decode()
     
     return render_template('admin_2fa_setup.html', 
-                         secret=admin_2fa.secret_key, 
+                         secret=secret, 
                          qr_code=qr_code_data)
 
 @app.route('/admin/enable-2fa', methods=['POST'])
 @login_required
 @ip_whitelist_required
 def enable_2fa():
+    """Enable 2FA after verification"""
     token = request.form.get('token')
-    admin_2fa = Admin2FA.query.get(1)
+    
+    conn = get_db_connection()
+    admin_2fa = conn.execute('SELECT secret_key FROM admin_2fa WHERE id = 1').fetchone()
     
     if admin_2fa:
-        totp = pyotp.TOTP(admin_2fa.secret_key)
+        totp = pyotp.TOTP(admin_2fa['secret_key'])
         if totp.verify(token):
             backup_codes = [secrets.token_hex(4).upper() for _ in range(10)]
-            admin_2fa.is_enabled = True
-            admin_2fa.backup_codes = json.dumps(backup_codes)
-            db.session.commit()
+            conn.execute('''
+                UPDATE admin_2fa 
+                SET is_enabled = 1, backup_codes = ?
+                WHERE id = 1
+            ''', (json.dumps(backup_codes),))
+            conn.commit()
+            conn.close()
             
             flash('2FA enabled successfully! Save your backup codes.', 'success')
             return render_template('admin_2fa_backup_codes.html', backup_codes=backup_codes)
         else:
+            conn.close()
             flash('Invalid token. Please try again.', 'danger')
             return redirect(url_for('setup_2fa'))
     
+    conn.close()
     flash('2FA setup error.', 'danger')
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/logout')
 @ip_whitelist_required
 def admin_logout():
+    """Admin logout"""
     session.clear()
     flash('You have been logged out.', 'success')
     return redirect(url_for('admin_login'))
@@ -685,34 +770,63 @@ def admin_logout():
 @login_required
 @ip_whitelist_required
 def admin_dashboard():
-    stats = BusinessStat.query.all()
-    stats_dict = {stat.stat_name: stat.stat_value for stat in stats}
-    quotes = Quote.query.order_by(Quote.created_at.desc()).limit(10).all()
-    pending_comments = Comment.query.filter_by(approved=False).order_by(Comment.created_at.desc()).all()
-    newsletter_count = NewsletterSubscription.query.filter_by(active=True).count()
+    """Admin dashboard"""
+    conn = get_db_connection()
+    
+    stats = conn.execute('SELECT stat_name, stat_value FROM business_stats').fetchall()
+    stats_dict = {stat['stat_name']: stat['stat_value'] for stat in stats}
+    
+    quotes = conn.execute('''
+        SELECT * FROM quotes
+        ORDER BY created_at DESC
+        LIMIT 10
+    ''').fetchall()
+    
+    pending_comments = conn.execute('''
+        SELECT * FROM comments
+        WHERE approved = 0
+        ORDER BY created_at DESC
+    ''').fetchall()
+    
+    newsletter_count = conn.execute('SELECT COUNT(*) as count FROM newsletter_subscriptions WHERE active = 1').fetchone()
+    
+    conn.close()
     
     return render_template('admin_dashboard.html', 
                          stats=stats_dict,
                          quotes=quotes,
                          pending_comments=pending_comments,
-                         newsletter_count=newsletter_count)
+                         newsletter_count=newsletter_count['count'])
 
 @app.route('/admin/quotes')
 @login_required
 @ip_whitelist_required
 def admin_quotes():
-    quotes = Quote.query.order_by(Quote.created_at.desc()).all()
+    """View all quotes"""
+    conn = get_db_connection()
+    quotes = conn.execute('''
+        SELECT * FROM quotes
+        ORDER BY created_at DESC
+    ''').fetchall()
+    conn.close()
+    
     return render_template('admin_quotes.html', quotes=quotes)
 
 @app.route('/admin/quotes/<int:quote_id>/status', methods=['POST'])
 @login_required
 @ip_whitelist_required
 def update_quote_status(quote_id):
+    """Update quote status"""
     new_status = request.form.get('status')
-    quote = Quote.query.get_or_404(quote_id)
-    quote.status = new_status
-    quote.updated_at = datetime.utcnow()
-    db.session.commit()
+    
+    conn = get_db_connection()
+    conn.execute('''
+        UPDATE quotes
+        SET status = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (new_status, quote_id))
+    conn.commit()
+    conn.close()
     
     if new_status == 'completed':
         update_stat('jobs_completed', 1)
@@ -724,38 +838,53 @@ def update_quote_status(quote_id):
 @login_required
 @ip_whitelist_required
 def get_quote_details(quote_id):
-    quote = Quote.query.get_or_404(quote_id)
+    """Fetch details for a specific quote"""
+    conn = get_db_connection()
+    quote = conn.execute('SELECT * FROM quotes WHERE id = ?', (quote_id,)).fetchone()
+    conn.close()
+    
+    if not quote:
+        return jsonify({'success': False, 'message': 'Quote not found'}), 404
+    
     return jsonify({
         'success': True,
-        'id': quote.id,
-        'name': quote.name,
-        'email': quote.email,
-        'phone': quote.phone,
-        'address': quote.address,
-        'service': quote.service,
-        'details': quote.details,
-        'status': quote.status,
-        'created_at': quote.created_at.isoformat(),
-        'attachments': quote.attachments
+        'id': quote['id'],
+        'name': quote['name'],
+        'email': quote['email'],
+        'phone': quote['phone'],
+        'address': quote['address'],
+        'service': quote['service'],
+        'details': quote['details'],
+        'status': quote['status'],
+        'created_at': quote['created_at'],
+        'attachments': quote['attachments']
     })
 
 @app.route('/api/export/newsletter', methods=['GET'])
 @login_required
 @ip_whitelist_required
 def export_newsletter():
+    """Export newsletter subscribers as CSV"""
     try:
-        subscribers = NewsletterSubscription.query.order_by(NewsletterSubscription.subscribed_at.desc()).all()
+        conn = get_db_connection()
+        subscribers = conn.execute('''
+            SELECT email, subscribed_at, active
+            FROM newsletter_subscriptions
+            ORDER BY subscribed_at DESC
+        ''').fetchall()
+        conn.close()
+
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(['Email', 'Subscribed Date', 'Status'])
         
         for subscriber in subscribers:
             writer.writerow([
-                subscriber.email,
-                subscriber.subscribed_at.isoformat(),
-                'Active' if subscriber.active else 'Inactive'
+                subscriber['email'],
+                subscriber['subscribed_at'],
+                'Active' if subscriber['active'] else 'Inactive'
             ])
-        
+
         output.seek(0)
         return Response(
             output.getvalue(),
@@ -764,6 +893,7 @@ def export_newsletter():
                 'Content-Disposition': f'attachment; filename=newsletter_subscribers_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
             }
         )
+
     except Exception as e:
         logger.error(f"Export newsletter error: {e}")
         return jsonify({
@@ -772,6 +902,7 @@ def export_newsletter():
         }), 500
 
 def check_templates():
+    """Check if required templates exist"""
     required_templates = [
         'admin_dashboard.html',
         'admin_login.html',
@@ -800,16 +931,26 @@ def check_templates():
 @login_required
 @ip_whitelist_required
 def admin_comments():
-    comments = Comment.query.order_by(Comment.created_at.desc()).all()
+    """View all comments"""
+    conn = get_db_connection()
+    comments = conn.execute('''
+        SELECT * FROM comments
+        ORDER BY created_at DESC
+    ''').fetchall()
+    conn.close()
+    
     return render_template('admin_comments.html', comments=comments)
 
 @app.route('/admin/comments/<int:comment_id>/approve', methods=['POST'])
 @login_required
 @ip_whitelist_required
 def approve_comment(comment_id):
-    comment = Comment.query.get_or_404(comment_id)
-    comment.approved = True
-    db.session.commit()
+    """Approve a comment"""
+    conn = get_db_connection()
+    conn.execute('UPDATE comments SET approved = 1 WHERE id = ?', (comment_id,))
+    conn.commit()
+    conn.close()
+    
     flash('Comment approved successfully!', 'success')
     return redirect(url_for('admin_comments'))
 
@@ -817,9 +958,12 @@ def approve_comment(comment_id):
 @login_required
 @ip_whitelist_required
 def delete_comment(comment_id):
-    comment = Comment.query.get_or_404(comment_id)
-    db.session.delete(comment)
-    db.session.commit()
+    """Delete a comment"""
+    conn = get_db_connection()
+    conn.execute('DELETE FROM comments WHERE id = ?', (comment_id,))
+    conn.commit()
+    conn.close()
+    
     flash('Comment deleted successfully!', 'success')
     return redirect(url_for('admin_comments'))
 
@@ -827,69 +971,115 @@ def delete_comment(comment_id):
 @login_required
 @ip_whitelist_required
 def admin_newsletter():
-    subscribers = NewsletterSubscription.query.filter_by(active=True).order_by(NewsletterSubscription.subscribed_at.desc()).all()
+    """View newsletter subscribers"""
+    conn = get_db_connection()
+    subscribers = conn.execute('''
+        SELECT * FROM newsletter_subscriptions
+        WHERE active = 1
+        ORDER BY subscribed_at DESC
+    ''').fetchall()
+    conn.close()
+    
     return render_template('admin_newsletter.html', subscribers=subscribers)
 
 @app.route('/admin/stats', methods=['GET', 'POST'])
 @login_required
 @ip_whitelist_required
 def admin_stats():
+    """Manage business statistics"""
     if request.method == 'POST':
         stat_name = request.form.get('stat_name')
         stat_value = request.form.get('stat_value', type=int)
-        stat = BusinessStat.query.filter_by(stat_name=stat_name).first()
-        if stat:
-            stat.stat_value = stat_value
-            stat.updated_at = datetime.utcnow()
-            db.session.commit()
-            flash('Statistics updated successfully!', 'success')
-            return redirect(url_for('admin_stats'))
+        
+        conn = get_db_connection()
+        conn.execute('''
+            UPDATE business_stats
+            SET stat_value = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE stat_name = ?
+        ''', (stat_value, stat_name))
+        conn.commit()
+        conn.close()
+        
+        flash('Statistics updated successfully!', 'success')
+        return redirect(url_for('admin_stats'))
     
-    stats = BusinessStat.query.order_by(BusinessStat.stat_name).all()
+    conn = get_db_connection()
+    stats = conn.execute('SELECT * FROM business_stats ORDER BY stat_name').fetchall()
+    conn.close()
+    
     return render_template('admin_stats.html', stats=stats)
 
 @app.route('/api/performance_data')
 @login_required
 @ip_whitelist_required
 def get_performance_data():
+    """Fetch data for Business Performance chart based on period"""
     period = request.args.get('period', 'monthly')
-    
+    conn = get_db_connection()
+
     if period == 'daily':
-        query = db.session.query(
-            db.func.date(Quote.created_at).label('period'),
-            db.func.count().label('bookings'),
-            db.func.sum(db.case((Quote.status == 'completed', 1), else_=0)).label('jobs_completed')
-        ).filter(Quote.created_at >= db.func.date('now', '-30 days')).group_by(db.func.date(Quote.created_at)).order_by('period')
+        query = '''
+            SELECT 
+                date(created_at) as period,
+                COUNT(*) as bookings,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as jobs_completed
+            FROM quotes
+            WHERE created_at >= date('now', '-30 days')
+            GROUP BY date(created_at)
+            ORDER BY period ASC
+        '''
     elif period == 'weekly':
-        query = db.session.query(
-            db.func.strftime('%Y-%W', Quote.created_at).label('period'),
-            db.func.count().label('bookings'),
-            db.func.sum(db.case((Quote.status == 'completed', 1), else_=0)).label('jobs_completed')
-        ).filter(Quote.created_at >= db.func.date('now', '-12 weeks')).group_by(db.func.strftime('%Y-%W', Quote.created_at)).order_by('period')
+        query = '''
+            SELECT 
+                strftime('%Y-%W', created_at) as period,
+                COUNT(*) as bookings,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as jobs_completed
+            FROM quotes
+            WHERE created_at >= date('now', '-12 weeks')
+            GROUP BY strftime('%Y-%W', created_at)
+            ORDER BY period ASC
+        '''
     elif period == '90':
-        query = db.session.query(
-            db.func.date(Quote.created_at).label('period'),
-            db.func.count().label('bookings'),
-            db.func.sum(db.case((Quote.status == 'completed', 1), else_=0)).label('jobs_completed')
-        ).filter(Quote.created_at >= db.func.date('now', '-90 days')).group_by(db.func.date(Quote.created_at)).order_by('period')
+        query = '''
+            SELECT 
+                date(created_at) as period,
+                COUNT(*) as bookings,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as jobs_completed
+            FROM quotes
+            WHERE created_at >= date('now', '-90 days')
+            GROUP BY date(created_at)
+            ORDER BY period ASC
+        '''
     elif period == '365':
-        query = db.session.query(
-            db.func.strftime('%Y-%m', Quote.created_at).label('period'),
-            db.func.count().label('bookings'),
-            db.func.sum(db.case((Quote.status == 'completed', 1), else_=0)).label('jobs_completed')
-        ).filter(Quote.created_at >= db.func.date('now', '-1 year')).group_by(db.func.strftime('%Y-%m', Quote.created_at)).order_by('period')
+        query = '''
+            SELECT 
+                strftime('%Y-%m', created_at) as period,
+                COUNT(*) as bookings,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as jobs_completed
+            FROM quotes
+            WHERE created_at >= date('now', '-1 year')
+            GROUP BY strftime('%Y-%m', created_at)
+            ORDER BY period ASC
+        '''
     else:
-        query = db.session.query(
-            db.func.strftime('%Y-%m', Quote.created_at).label('period'),
-            db.func.count().label('bookings'),
-            db.func.sum(db.case((Quote.status == 'completed', 1), else_=0)).label('jobs_completed')
-        ).filter(Quote.created_at >= db.func.date('now', '-6 months')).group_by(db.func.strftime('%Y-%m', Quote.created_at)).order_by('period')
-    
-    performance_data = query.all()
-    labels = [row.period for row in performance_data]
-    bookings = [row.bookings for row in performance_data]
-    jobs_completed = [row.jobs_completed for row in performance_data]
-    
+        query = '''
+            SELECT 
+                strftime('%Y-%m', created_at) as period,
+                COUNT(*) as bookings,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as jobs_completed
+            FROM quotes
+            WHERE created_at >= date('now', '-6 months')
+            GROUP BY strftime('%Y-%m', created_at)
+            ORDER BY period ASC
+        '''
+
+    performance_data = conn.execute(query).fetchall()
+    conn.close()
+
+    labels = [row['period'] for row in performance_data]
+    bookings = [row['bookings'] for row in performance_data]
+    jobs_completed = [row['jobs_completed'] for row in performance_data]
+
     return jsonify({
         'labels': labels,
         'bookings': bookings,
@@ -900,13 +1090,22 @@ def get_performance_data():
 @login_required
 @ip_whitelist_required
 def get_service_distribution():
-    service_data = db.session.query(
-        Quote.service,
-        db.func.count().label('count')
-    ).filter(db.func.strftime('%Y-%m', Quote.created_at) == db.func.strftime('%Y-%m', 'now')).group_by(Quote.service).all()
+    """Fetch data for Service Distribution chart"""
+    conn = get_db_connection()
     
-    labels = [row.service for row in service_data]
-    counts = [row.count for row in service_data]
+    service_data = conn.execute('''
+        SELECT 
+            service,
+            COUNT(*) as count
+        FROM quotes
+        WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')
+        GROUP BY service
+    ''').fetchall()
+    
+    conn.close()
+    
+    labels = [row['service'] for row in service_data]
+    counts = [row['count'] for row in service_data]
     
     return jsonify({
         'labels': labels,
@@ -917,9 +1116,11 @@ def get_service_distribution():
 @login_required
 @ip_whitelist_required
 def admin_delete_quote(quote_id):
-    quote = Quote.query.get_or_404(quote_id)
-    db.session.delete(quote)
-    db.session.commit()
+    """Delete a quote"""
+    conn = get_db_connection()
+    conn.execute('DELETE FROM quotes WHERE id = ?', (quote_id,))
+    conn.commit()
+    conn.close()
     flash('Quote deleted successfully.', 'success')
     return redirect(url_for('admin_dashboard'))
 
