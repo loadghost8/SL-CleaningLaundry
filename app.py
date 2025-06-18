@@ -84,21 +84,25 @@ class Admin2FA(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
-    db.create_all()
-    # Initialize default stats if not present
-    default_stats = [
-        ('jobs_completed', 0),
-        ('customer_satisfaction', 0),
-        ('monthly_bookings', 0),
-        ('areas_served', 0),
-        ('years_experience', 0),
-        ('newsletter_subscribers', 0)
-    ]
-    for stat_name, stat_value in default_stats:
-        if not BusinessStat.query.filter_by(stat_name=stat_name).first():
-            stat = BusinessStat(stat_name=stat_name, stat_value=stat_value)
-            db.session.add(stat)
-    db.session.commit()
+    try:
+        db.create_all()
+        logger.info("Database tables created successfully")
+        # Initialize default stats if not present
+        default_stats = [
+            ('jobs_completed', 0),
+            ('customer_satisfaction', 0),
+            ('monthly_bookings', 0),
+            ('areas_served', 0),
+            ('years_experience', 0),
+            ('newsletter_subscribers', 0)
+        ]
+        for stat_name, stat_value in default_stats:
+            if not BusinessStat.query.filter_by(stat_name=stat_name).first():
+                stat = BusinessStat(stat_name=stat_name, stat_value=stat_value)
+                db.session.add(stat)
+        db.session.commit()
+    except Exception as e:
+        logger.error(f"Failed to create database tables: {e}")
 
 app.permanent_session_lifetime = timedelta(hours=2)
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
@@ -519,8 +523,84 @@ def get_comments():
 
 @app.route('/api/stats')
 def get_stats():
-    stats = BusinessStat.query.all()
-    return jsonify({stat.stat_name: stat.stat_value for stat in stats})
+    try:
+        stats = BusinessStat.query.all()
+        return jsonify({stat.stat_name: stat.stat_value for stat in stats})
+    except Exception as e:
+        logger.error(f"Error in /api/stats: {e}")
+        return jsonify({'error': 'Failed to fetch stats'}), 500
+
+@app.route('/api/performance_data')
+@login_required
+@ip_whitelist_required
+def get_performance_data():
+    period = request.args.get('period', 'monthly')
+    
+    if period == 'daily':
+        query = db.session.query(
+            db.func.to_char(Quote.created_at, 'YYYY-MM-DD').label('period'),
+            db.func.count().label('bookings'),
+            db.func.sum(db.case((Quote.status == 'completed', 1), else_=0)).label('jobs_completed')
+        ).filter(Quote.created_at >= db.func.now() - timedelta(days=30)).group_by(db.func.to_char(Quote.created_at, 'YYYY-MM-DD')).order_by('period')
+    elif period == 'weekly':
+        query = db.session.query(
+            db.func.to_char(Quote.created_at, 'IYYY-IW').label('period'),  # ISO week
+            db.func.count().label('bookings'),
+            db.func.sum(db.case((Quote.status == 'completed', 1), else_=0)).label('jobs_completed')
+        ).filter(Quote.created_at >= db.func.now() - timedelta(weeks=12)).group_by(db.func.to_char(Quote.created_at, 'IYYY-IW')).order_by('period')
+    elif period == '90':
+        query = db.session.query(
+            db.func.to_char(Quote.created_at, 'YYYY-MM-DD').label('period'),
+            db.func.count().label('bookings'),
+            db.func.sum(db.case((Quote.status == 'completed', 1), else_=0)).label('jobs_completed')
+        ).filter(Quote.created_at >= db.func.now() - timedelta(days=90)).group_by(db.func.to_char(Quote.created_at, 'YYYY-MM-DD')).order_by('period')
+    elif period == '365':
+        query = db.session.query(
+            db.func.to_char(Quote.created_at, 'YYYY-MM').label('period'),
+            db.func.count().label('bookings'),
+            db.func.sum(db.case((Quote.status == 'completed', 1), else_=0)).label('jobs_completed')
+        ).filter(Quote.created_at >= db.func.now() - timedelta(days=365)).group_by(db.func.to_char(Quote.created_at, 'YYYY-MM')).order_by('period')
+    else:
+        query = db.session.query(
+            db.func.to_char(Quote.created_at, 'YYYY-MM').label('period'),
+            db.func.count().label('bookings'),
+            db.func.sum(db.case((Quote.status == 'completed', 1), else_=0)).label('jobs_completed')
+        ).filter(Quote.created_at >= db.func.now() - timedelta(days=180)).group_by(db.func.to_char(Quote.created_at, 'YYYY-MM')).order_by('period')
+
+    performance_data = query.all()
+    
+    labels = [row.period for row in performance_data]
+    bookings = [row.bookings for row in performance_data]
+    jobs_completed = [row.jobs_completed for row in performance_data]
+
+    return jsonify({
+        'labels': labels,
+        'bookings': bookings,
+        'jobs_completed': jobs_completed
+    })
+
+@app.route('/api/service_distribution')
+@login_required
+@ip_whitelist_required
+def get_service_distribution():
+    try:
+        service_data = db.session.query(
+            Quote.service,
+            db.func.count().label('count')
+        ).filter(
+            db.func.to_char(Quote.created_at, 'YYYY-MM') == db.func.to_char(db.func.now(), 'YYYY-MM')
+        ).group_by(Quote.service).all()
+        
+        labels = [row.service for row in service_data]
+        counts = [row.count for row in service_data]
+        
+        return jsonify({
+            'labels': labels,
+            'data': counts
+        })
+    except Exception as e:
+        logger.error(f"Error in /api/service_distribution: {e}")
+        return jsonify({'error': 'Failed to fetch service data'}), 500
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 @ip_whitelist_required
@@ -859,72 +939,6 @@ def admin_stats():
     
     stats = BusinessStat.query.order_by(BusinessStat.stat_name).all()
     return render_template('admin_stats.html', stats=stats)
-
-@app.route('/api/performance_data')
-@login_required
-@ip_whitelist_required
-def get_performance_data():
-    period = request.args.get('period', 'monthly')
-    
-    if period == 'daily':
-        query = db.session.query(
-            db.func.date(Quote.created_at).label('period'),
-            db.func.count().label('bookings'),
-            db.func.sum(db.case((Quote.status == 'completed', 1), else_=0)).label('jobs_completed')
-        ).filter(Quote.created_at >= db.func.now() - timedelta(days=30)).group_by(db.func.date(Quote.created_at)).order_by('period')
-    elif period == 'weekly':
-        query = db.session.query(
-            db.func.strftime('%Y-%W', Quote.created_at).label('period'),
-            db.func.count().label('bookings'),
-            db.func.sum(db.case((Quote.status == 'completed', 1), else_=0)).label('jobs_completed')
-        ).filter(Quote.created_at >= db.func.now() - timedelta(weeks=12)).group_by(db.func.strftime('%Y-%W', Quote.created_at)).order_by('period')
-    elif period == '90':
-        query = db.session.query(
-            db.func.date(Quote.created_at).label('period'),
-            db.func.count().label('bookings'),
-            db.func.sum(db.case((Quote.status == 'completed', 1), else_=0)).label('jobs_completed')
-        ).filter(Quote.created_at >= db.func.now() - timedelta(days=90)).group_by(db.func.date(Quote.created_at)).order_by('period')
-    elif period == '365':
-        query = db.session.query(
-            db.func.strftime('%Y-%m', Quote.created_at).label('period'),
-            db.func.count().label('bookings'),
-            db.func.sum(db.case((Quote.status == 'completed', 1), else_=0)).label('jobs_completed')
-        ).filter(Quote.created_at >= db.func.now() - timedelta(days=365)).group_by(db.func.strftime('%Y-%m', Quote.created_at)).order_by('period')
-    else:
-        query = db.session.query(
-            db.func.strftime('%Y-%m', Quote.created_at).label('period'),
-            db.func.count().label('bookings'),
-            db.func.sum(db.case((Quote.status == 'completed', 1), else_=0)).label('jobs_completed')
-        ).filter(Quote.created_at >= db.func.now() - timedelta(days=180)).group_by(db.func.strftime('%Y-%m', Quote.created_at)).order_by('period')
-
-    performance_data = query.all()
-    
-    labels = [row.period for row in performance_data]
-    bookings = [row.bookings for row in performance_data]
-    jobs_completed = [row.jobs_completed for row in performance_data]
-
-    return jsonify({
-        'labels': labels,
-        'bookings': bookings,
-        'jobs_completed': jobs_completed
-    })
-
-@app.route('/api/service_distribution')
-@login_required
-@ip_whitelist_required
-def get_service_distribution():
-    service_data = db.session.query(
-        Quote.service,
-        db.func.count().label('count')
-    ).filter(db.func.strftime('%Y-%m', Quote.created_at) == db.func.strftime('%Y-%m', db.func.now())).group_by(Quote.service).all()
-    
-    labels = [row.service for row in service_data]
-    counts = [row.count for row in service_data]
-    
-    return jsonify({
-        'labels': labels,
-        'data': counts
-    })
 
 @app.route('/admin/quotes/<int:quote_id>/delete', methods=['POST'])
 @login_required
