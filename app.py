@@ -23,8 +23,15 @@ import qrcode
 from io import BytesIO
 import base64
 import secrets
+from flask_sqlalchemy import SQLAlchemy
 
 load_dotenv()
+
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{DATABASE}"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'fallbacksecretkey')
