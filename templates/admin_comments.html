@@ -183,13 +183,14 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200" id="commentsTable">
-                                {% for comment in comments %}
+                                {% for comment, created_at in comments %}
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-4 sm:px-6 py-4" data-label="Customer">
                                         <div>
                                             <div class="font-medium text-gray-900">{{ comment.name }}</div>
                                             <div class="text-sm text-gray-500">{{ comment.email }}</div>
-                                        </td>
+                                        </div>
+                                    </td>
                                     <td class="px-4 sm:px-6 py-4 text-sm text-gray-900" data-label="Rating">
                                         {% for i in range(comment.rating) %}⭐{% endfor %}
                                     </td>
@@ -197,7 +198,7 @@
                                     <td class="px-4 sm:px-6 py-4 text-sm" data-label="Status">
                                         <span class="status-badge {{ 'status-approved' if comment.approved else 'status-pending' }}">{{ 'Approved' if comment.approved else 'Pending' }}</span>
                                     </td>
-                                    <td class="px-4 sm:px-6 py-4 text-sm text-gray-500" data-label="Date">{{ comment.created_at.split()[0] if comment.created_at else 'N/A' }}</td>
+                                    <td class="px-4 sm:px-6 py-4 text-sm text-gray-500" data-label="Date">{{ created_at | default('N/A') }}</td>
                                     <td class="px-4 sm:px-6 py-4" data-label="Actions">
                                         <div class="flex space-x-2">
                                             {% if not comment.approved %}

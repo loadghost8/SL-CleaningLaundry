@@ -172,7 +172,7 @@
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-4 sm:px-6 py-4 text-sm text-gray-900" data-label="Email">{{ subscriber.email }}</td>
                                     <td class="px-4 sm:px-6 py-4 text-sm text-gray-500" data-label="Subscribed Date">
-                                        {{ subscriber.subscribed_at.split()[0] if subscriber.subscribed_at else 'N/A' }}
+                                        {{ subscriber.subscribed_at | default('N/A') }}
                                     </td>
                                     <td class="px-4 sm:px-6 py-4 text-sm text-gray-500" data-label="Status">
                                         {{ 'Active' if subscriber.active else 'Inactive' }}

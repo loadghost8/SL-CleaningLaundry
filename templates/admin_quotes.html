@@ -169,7 +169,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200" id="quotesBody">
-                            {% for quote in quotes %}
+                            {% for quote, created_at in quotes %}
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4">
                                     <div>
@@ -186,7 +186,7 @@
                                     </select>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-500">
-                                    {{ quote.created_at.split()[0] if quote.created_at else 'N/A' }}
+                                    {{ created_at | default('N/A') }}
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="flex space-x-2">
