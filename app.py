@@ -23,6 +23,10 @@ import base64
 import secrets
 from functools import wraps
 
+# Initialize logging at the top
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -131,9 +135,6 @@ app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 def ip_whitelist_required(f):
     @wraps(f)
