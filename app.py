@@ -765,6 +765,7 @@ def admin_dashboard():
     stats_dict = {stat.stat_name: stat.stat_value for stat in stats}
     
     quotes = Quote.query.order_by(Quote.created_at.desc()).limit(10).all()
+    quotes_with_dates = [(quote, quote.created_at.strftime('%Y-%m-%d %H:%M:%S') if quote.created_at else 'N/A') for quote in quotes]
     
     pending_comments = Comment.query.filter_by(approved=False).order_by(Comment.created_at.desc()).all()
     
@@ -772,7 +773,7 @@ def admin_dashboard():
     
     return render_template('admin_dashboard.html', 
                          stats=stats_dict,
-                         quotes=quotes,
+                         quotes=quotes_with_dates,
                          pending_comments=pending_comments,
                          newsletter_count=newsletter_count)
 
@@ -781,7 +782,8 @@ def admin_dashboard():
 @ip_whitelist_required
 def admin_quotes():
     quotes = Quote.query.order_by(Quote.created_at.desc()).all()
-    return render_template('admin_quotes.html', quotes=quotes)
+    quotes_with_dates = [(quote, quote.created_at.strftime('%Y-%m-%d %H:%M:%S') if quote.created_at else 'N/A') for quote in quotes]
+    return render_template('admin_quotes.html', quotes=quotes_with_dates)
 
 @app.route('/admin/quotes/<int:quote_id>/status', methods=['POST'])
 @login_required
@@ -820,7 +822,7 @@ def get_quote_details(quote_id):
         'service': quote.service,
         'details': quote.details,
         'status': quote.status,
-        'created_at': quote.created_at.isoformat(),
+        'created_at': quote.created_at.strftime('%Y-%m-%d %H:%M:%S') if quote.created_at else 'N/A',
         'attachments': quote.attachments
     })
 
