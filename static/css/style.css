@@ -150,7 +150,7 @@ body {
 }
 
 .logo {
-    font-size: 1.8rem;
+    font-size: 1rem;
     font-weight: bold;
     color: var(--brand-primary);
     text-decoration: none;
@@ -180,6 +180,7 @@ body {
     font-weight: 500;
     transition: color 0.3s ease;
     position: relative;
+    
 }
 
 .nav-links a:hover {
