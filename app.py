@@ -118,9 +118,6 @@ ADMIN_PASSWORD_HASH = generate_password_hash(os.getenv("ADMIN_PASSWORD"))
 if not ADMIN_USERNAME or not os.getenv("ADMIN_PASSWORD"):
     raise ValueError("ADMIN_USERNAME and ADMIN_PASSWORD must be set in environment variables")
 
-ADMIN_IP_WHITELIST = os.getenv("ADMIN_IP_WHITELIST", "").split(",")
-ADMIN_IP_WHITELIST = [ip.strip() for ip in ADMIN_IP_WHITELIST if ip.strip()]
-
 login_attempts = {}
 RATE_LIMIT_ATTEMPTS = 5
 RATE_LIMIT_WINDOW = 900
@@ -135,17 +132,6 @@ app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-def ip_whitelist_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if ADMIN_IP_WHITELIST:
-            client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
-            if client_ip not in ADMIN_IP_WHITELIST:
-                flash('Access denied from this IP address.', 'danger')
-                return redirect(url_for('index'))
-        return f(*args, **kwargs)
-    return decorated_function
 
 def login_required(f):
     @wraps(f)
@@ -219,6 +205,7 @@ def make_session_permanent():
                 return redirect(url_for('admin_login'))
         
         session['last_activity'] = datetime.now().isoformat()
+
 
 @app.route('/')
 def index():
@@ -533,7 +520,6 @@ def get_stats():
 
 @app.route('/api/performance_data')
 @login_required
-@ip_whitelist_required
 def get_performance_data():
     period = request.args.get('period', 'monthly')
     
@@ -582,7 +568,6 @@ def get_performance_data():
 
 @app.route('/api/service_distribution')
 @login_required
-@ip_whitelist_required
 def get_service_distribution():
     try:
         service_data = db.session.query(
@@ -604,7 +589,6 @@ def get_service_distribution():
         return jsonify({'error': 'Failed to fetch service data'}), 500
 
 @app.route('/admin/login', methods=['GET', 'POST'])
-@ip_whitelist_required
 def admin_login():
     client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
     
@@ -654,7 +638,6 @@ def admin_login():
     return render_template('admin_login.html')
 
 @app.route('/admin/verify-2fa', methods=['GET', 'POST'])
-@ip_whitelist_required
 def verify_2fa():
     if 'temp_admin_login' not in session:
         return redirect(url_for('admin_login'))
@@ -693,7 +676,6 @@ def verify_2fa():
 
 @app.route('/admin/setup-2fa')
 @login_required
-@ip_whitelist_required
 def setup_2fa():
     existing_2fa = Admin2FA.query.filter_by(id=1).first()
     
@@ -727,7 +709,6 @@ def setup_2fa():
 
 @app.route('/admin/enable-2fa', methods=['POST'])
 @login_required
-@ip_whitelist_required
 def enable_2fa():
     token = request.form.get('token')
     
@@ -751,7 +732,6 @@ def enable_2fa():
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/logout')
-@ip_whitelist_required
 def admin_logout():
     session.clear()
     flash('You have been logged out.', 'success')
@@ -759,7 +739,6 @@ def admin_logout():
 
 @app.route('/admin')
 @login_required
-@ip_whitelist_required
 def admin_dashboard():
     stats = BusinessStat.query.all()
     stats_dict = {stat.stat_name: stat.stat_value for stat in stats}
@@ -779,7 +758,6 @@ def admin_dashboard():
 
 @app.route('/admin/quotes')
 @login_required
-@ip_whitelist_required
 def admin_quotes():
     quotes = Quote.query.order_by(Quote.created_at.desc()).all()
     quotes_with_dates = [(quote, quote.created_at.strftime('%Y-%m-%d %H:%M:%S') if quote.created_at else 'N/A') for quote in quotes]
@@ -787,7 +765,6 @@ def admin_quotes():
 
 @app.route('/admin/quotes/<int:quote_id>/status', methods=['POST'])
 @login_required
-@ip_whitelist_required
 def update_quote_status(quote_id):
     new_status = request.form.get('status')
     
@@ -805,7 +782,6 @@ def update_quote_status(quote_id):
 
 @app.route('/admin/quotes/<int:quote_id>/details', methods=['GET'])
 @login_required
-@ip_whitelist_required
 def get_quote_details(quote_id):
     quote = Quote.query.get(quote_id)
     
@@ -826,9 +802,48 @@ def get_quote_details(quote_id):
         'attachments': quote.attachments
     })
 
+@app.route('/api/export/quotes', methods=['GET'])
+@login_required
+def export_quotes():
+    try:
+        quotes = Quote.query.order_by(Quote.created_at.desc()).all()
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['ID', 'Name', 'Email', 'Phone', 'Address', 'Service', 'Details', 'Status', 'Created At', 'Attachments'])
+
+        for quote in quotes:
+            writer.writerow([
+                quote.id,
+                quote.name,
+                quote.email,
+                quote.phone,
+                quote.address or '',
+                quote.service,
+                quote.details or '',
+                quote.status,
+                quote.created_at.isoformat() if quote.created_at else '',
+                quote.attachments or ''
+            ])
+
+        output.seek(0)
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={
+                'Content-Disposition': f'attachment; filename=quotes_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Export quotes error: {e}")
+        return jsonify({
+            'success': False,
+            'message': 'Failed to export quotes data'
+        }), 500
+
 @app.route('/api/export/newsletter', methods=['GET'])
 @login_required
-@ip_whitelist_required
 def export_newsletter():
     try:
         subscribers = NewsletterSubscription.query.order_by(NewsletterSubscription.subscribed_at.desc()).all()
@@ -887,14 +902,12 @@ def check_templates():
 
 @app.route('/admin/comments')
 @login_required
-@ip_whitelist_required
 def admin_comments():
     comments = Comment.query.order_by(Comment.created_at.desc()).all()
     return render_template('admin_comments.html', comments=comments)
 
 @app.route('/admin/comments/<int:comment_id>/approve', methods=['POST'])
 @login_required
-@ip_whitelist_required
 def approve_comment(comment_id):
     comment = Comment.query.get(comment_id)
     if comment:
@@ -906,7 +919,6 @@ def approve_comment(comment_id):
 
 @app.route('/admin/comments/<int:comment_id>/delete', methods=['POST'])
 @login_required
-@ip_whitelist_required
 def delete_comment(comment_id):
     comment = Comment.query.get(comment_id)
     if comment:
@@ -918,14 +930,12 @@ def delete_comment(comment_id):
 
 @app.route('/admin/newsletter')
 @login_required
-@ip_whitelist_required
 def admin_newsletter():
     subscribers = NewsletterSubscription.query.filter_by(active=True).order_by(NewsletterSubscription.subscribed_at.desc()).all()
     return render_template('admin_newsletter.html', subscribers=subscribers)
 
 @app.route('/admin/stats', methods=['GET', 'POST'])
 @login_required
-@ip_whitelist_required
 def admin_stats():
     if request.method == 'POST':
         stat_name = request.form.get('stat_name')
@@ -945,7 +955,6 @@ def admin_stats():
 
 @app.route('/admin/quotes/<int:quote_id>/delete', methods=['POST'])
 @login_required
-@ip_whitelist_required
 def admin_delete_quote(quote_id):
     quote = Quote.query.get(quote_id)
     if quote:
