@@ -226,7 +226,7 @@ body {
 }
 
 .mobile-menu span {
-    width: 15px;
+    width: 25px;
     height: 3px;
     background: var(--text-primary);
     margin: 3px 0;
