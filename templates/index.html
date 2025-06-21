@@ -20,6 +20,7 @@
   <script src="https://www.google.com/recaptcha/api.js" async defer></script>
   
   <style>
+    
     .social-links {
         display: flex;
         justify-content: center;
@@ -105,13 +106,45 @@
         opacity: 1;
         visibility: visible;
     }
+    .logo-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.logo-img img {
+  height: 50px;
+  width: auto;
+  display: block;
+}
+
+.logo-text {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--brand-primary);
+  text-decoration: none;
+}
+
+/* Hide image only on phones */
+@media (max-width: 768px) {
+  .logo-img {
+    display: none;
+  }
+}
+
   </style>
 </head>
 <body>
     <!-- Navigation -->
     <nav class="navbar">
         <div class="nav-container">
-            <a href="#home" class="logo"><img src="{{ url_for('static', filename='images/banner-logo.jpg') }}" alt="SL Cleaning & Laundry Logo" style="height: 50px;"> SL Cleaning & Laundry</a>
+        <div class="logo-container">
+        <a href="#home" class="logo-img">
+            <img src="{{ url_for('static', filename='images/banner-logo.jpg') }}" alt="SL Cleaning & Laundry Logo">
+        </a>
+        <a href="#home" class="logo-text">SL Cleaning & Laundry</a>
+        </div>
             <ul class="nav-links">
                 <li><a href="#home">Home</a></li>
                 <li><a href="#about">About</a></li>
@@ -604,7 +637,7 @@
             <a href="#about" style="color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.3s ease;">About</a>
             <a href="#services" style="color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.3s ease;">Services</a>
             <a href="#contact" style="color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.3s ease;">Contact</a>
-            <a href="{{ url_for('admin_login') }}" style="color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.3s ease;">Admin</a>
+          <!--  <a href="{{ url_for('admin_login') }}" style="color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.3s ease;">Admin</a>-->
             <a href="#" style="color: rgba(255,255,255,0.8); text-decoration: none; transition: color 0.3s ease;">Privacy Policy</a>
         </div>
 
@@ -629,6 +662,13 @@
     <a href="tel:+447479691603" class="fab" title="Call Now"><i class="fas fa-phone"></i></a>
 
     <!-- Load your JavaScript -->
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}">  const mobileMenu = document.getElementById("mobileMenu");
+  const navLinks = document.querySelector(".nav-links");
+
+  mobileMenu.addEventListener("click", () => {
+    mobileMenu.classList.toggle("active");
+    navLinks.classList.toggle("mobile-active");
+  });</script>
+
 </body>
 </html>

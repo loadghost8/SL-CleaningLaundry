@@ -65,6 +65,18 @@
         filter: brightness(1.2) contrast(1.1);
     }
 }
+@media (max-width: 768px) {
+  .logo {
+    display: none !important;
+  }
+
+  .nav-links.mobile-active {
+    left: 0;
+    overflow-y: auto;
+    height: 100vh;
+  }
+}
+
 
 /* Manual dark mode toggle class */
 .dark-mode {
